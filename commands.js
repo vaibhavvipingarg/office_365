@@ -1,0 +1,1 @@
+Office.onReady((function(){Office.actions.associate("COMMAND_ID",(function(){console.log("Command executed")}))}));

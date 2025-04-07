@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8" />
+    <title>Authentication Callback</title>
+    <script>
+        window.onload = function() {
+            // Extract the authorization code from the URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const code = urlParams.get('code');
+            
+            if (code) {
+                // Send the code to the parent window
+                window.opener.postMessage({ type: 'salesforce-auth', code: code }, '*');
+                
+                // Display success message
+                document.getElementById('status').innerText = 'Authentication successful! You can close this window.';
+                
+                // Close the window after a delay
+                setTimeout(function() {
+                    window.close();
+                }, 3000);
+            } else {
+                document.getElementById('status').innerText = 'Authentication failed. Please try again.';
+            }
+        };
+    </script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 100px;
+        }
+        .status {
+            padding: 20px;
+            background-color: #f5f5f5;
+            border-radius: 5px;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+    <div class="status">
+        <h2>Salesforce Authentication</h2>
+        <p id="status">Processing authentication...</p>
+    </div>
+</body>
+</html> 
