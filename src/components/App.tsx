@@ -377,7 +377,7 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
         </Stack>
       ) : (
         <Stack tokens={{ childrenGap: 15 }}>
-          {isLocalMode && (dashboardData || metricsData) && (
+          {(dashboardData || metricsData) && (
             <Stack tokens={{ childrenGap: 8, padding: '15px 0' }}>
               <Pivot 
                 selectedKey={activeTab} 

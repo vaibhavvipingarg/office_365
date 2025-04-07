@@ -152,7 +152,7 @@ export const SalesforceDataCard: React.FC<SalesforceDataCardProps> = ({
       )}
       <div className={styles.header}>
         <Stack horizontal>
-          <Text className={styles.title}>{item.MasterLabel}</Text>
+          <Text className={styles.title}>{item.MasterLabel || item.DeveloperName}</Text>
           <div className={styles.workspace}>
             <Icon iconName="FolderHorizontal" className={styles.icon} />
             {item.AnalyticsWorkspace?.MasterLabel || 'No Workspace'}

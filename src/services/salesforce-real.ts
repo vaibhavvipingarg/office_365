@@ -323,7 +323,7 @@ export class SalesforceAuth {
         
         return {
           Id: Id || `dashboard-${Math.random().toString(36).substring(2, 10)}`,
-          Name: DeveloperName || MasterLabel || 'Untitled Dashboard',
+          DeveloperName: DeveloperName || MasterLabel || 'Untitled Dashboard',
           CreatedBy: CreatedBy || { Name: 'Unknown User' },
           Description: Description || 'No description',
           CreatedDate: CreatedDate,
