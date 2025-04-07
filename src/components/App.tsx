@@ -82,7 +82,7 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
     setLoading(true);
     setError(null);
     try {
-      if (isLocalMode && !localStorage.getItem('sf_client_id')) {
+      if (!localStorage.getItem('sf_client_id')) {
         setShowConfig(true);
         setLoading(false);
         return;
@@ -323,7 +323,7 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
               Connected
             </div>
             
-            {showClientInfo && isLocalMode && (
+            {showClientInfo && (
               <div style={{
                 position: 'absolute',
                 top: '100%',
@@ -367,13 +367,11 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
             iconProps={{ iconName: 'Plug' }}
           />
           
-          {isLocalMode && (
-            <DefaultButton
-              text="Configure Salesforce Connection"
-              onClick={() => setShowConfig(true)}
-              iconProps={{ iconName: 'Settings' }}
-            />
-          )}
+          <DefaultButton
+            text="Configure Salesforce Connection"
+            onClick={() => setShowConfig(true)}
+            iconProps={{ iconName: 'Settings' }}
+          />
         </Stack>
       ) : (
         <Stack tokens={{ childrenGap: 15 }}>
