@@ -296,7 +296,7 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
   return (
     <Stack tokens={{ childrenGap: 15, padding: 20 }}>
       <Stack horizontal verticalAlign="center" horizontalAlign="space-between">
-        <Text variant="xLarge" styles={{ root: { fontWeight: 600 } }}>Tableau Next</Text>
+        <Text variant="xLarge" styles={{ root: { fontWeight: 600 } }}>Tableau Next + Office</Text>
         
         {isAuthenticated && (
           <div style={{ 
