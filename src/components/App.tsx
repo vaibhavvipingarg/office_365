@@ -140,7 +140,14 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
     setError(null);
     
     try {
-      await OfficeService.insertContent(selectedItem);
+      // Get the preview card element
+      const previewElement = document.getElementById('preview-card');
+      if (!previewElement) {
+        throw new Error('Preview element not found');
+      }
+
+      // Insert the preview as an image
+      await OfficeService.insertImageFromElement(previewElement);
       setShowPreview(false);
       setError(null);
     } catch (err) {
@@ -177,12 +184,15 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
     
     return (
       <Stack 
+        id="preview-card"
         tokens={{ childrenGap: 12 }}
         styles={{
           root: {
             padding: 16,
-            backgroundColor: theme.palette.neutralLighter,
-            borderRadius: 2
+            backgroundColor: theme.palette.white,
+            borderRadius: 4,
+            border: `1px solid ${theme.palette.neutralLight}`,
+            boxShadow: theme.effects.elevation4
           }
         }}
       >
@@ -232,7 +242,7 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
                 }
               }}
             >
-              <Text variant="xSmall" style={{ color: theme.palette.neutralSecondary }}>
+              <Text variant="small" style={{ color: theme.palette.neutralSecondary }}>
                 Metric ID: {item.id || 'Unknown'}
               </Text>
             </Stack>
@@ -283,7 +293,7 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
                 }
               }}
             >
-              <Text variant="xSmall" style={{ color: theme.palette.neutralSecondary }}>
+              <Text variant="small" style={{ color: theme.palette.neutralSecondary }}>
                 Dashboard ID: {item.Id || 'Unknown'}
               </Text>
             </Stack>

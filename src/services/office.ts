@@ -1,3 +1,5 @@
+import html2canvas from 'html2canvas';
+
 export const OfficeService = {
   async insertContent(content: any) {
     try {
@@ -142,6 +144,17 @@ export const OfficeService = {
         reject(error);
       }
     });
+  },
+
+  async insertImageFromElement(element: HTMLElement): Promise<void> {
+    try {
+      const canvas = await html2canvas(element);
+      const imageDataUrl = canvas.toDataURL();
+      await this.insertImage(imageDataUrl);
+    } catch (error) {
+      console.error('Error inserting image from element:', error);
+      throw error;
+    }
   }
 };
 
