@@ -5,44 +5,128 @@
     <title>Authentication Callback</title>
     <script>
         window.onload = function() {
-            // Extract the authorization code from the URL
-            const urlParams = new URLSearchParams(window.location.search);
-            const code = urlParams.get('code');
+            // Extract the authorization code or tokens from URL
+            const params = {};
+            // Parse the hash fragment
+            if (window.location.hash) {
+                window.location.hash.substring(1).split('&').forEach(function(pair) {
+                    const parts = pair.split('=');
+                    params[decodeURIComponent(parts[0])] = decodeURIComponent(parts[1] || '');
+                });
+            } 
+            // Also parse query parameters
+            else if (window.location.search) {
+                window.location.search.substring(1).split('&').forEach(function(pair) {
+                    const parts = pair.split('=');
+                    params[decodeURIComponent(parts[0])] = decodeURIComponent(parts[1] || '');
+                });
+            }
             
-            if (code) {
-                // Send the code to the parent window
-                window.opener.postMessage({ type: 'salesforce-auth', code: code }, '*');
+            // Update status
+            const statusElement = document.getElementById('status');
+            const debugElement = document.getElementById('debug-info');
+            
+            // Display debug info
+            debugElement.textContent = JSON.stringify({
+                hash: window.location.hash,
+                search: window.location.search,
+                params: params,
+                hasOpener: !!window.opener,
+                origin: window.location.origin
+            }, null, 2);
+            
+            if (params.access_token) {
+                statusElement.textContent = 'Authentication successful! Redirecting...';
+                statusElement.className = 'success';
                 
-                // Display success message
-                document.getElementById('status').innerText = 'Authentication successful! You can close this window.';
-                
-                // Close the window after a delay
-                setTimeout(function() {
-                    window.close();
-                }, 3000);
+                // Send the token back to the parent window
+                if (window.opener && !window.opener.closed) {
+                    try {
+                        console.log('Sending token to opener window');
+                        window.opener.postMessage({
+                            type: 'salesforce_oauth_response',
+                            access_token: params.access_token,
+                            instance_url: params.instance_url,
+                            id: params.id,
+                            expires_in: params.expires_in ? parseInt(params.expires_in, 10) : 7200 // Default to 2 hours if not specified
+                        }, '*'); // Use '*' instead of origin to ensure it works cross-origin
+                        
+                        // Close this window after a delay
+                        setTimeout(function() {
+                            window.close();
+                        }, 3000);
+                    } catch (error) {
+                        statusElement.textContent = 'Error sending data to opener: ' + error.message;
+                        statusElement.className = 'error';
+                    }
+                } else {
+                    statusElement.textContent = 'Authentication successful, but opener window not available. You can close this window.';
+                    statusElement.className = 'warning';
+                }
+            } else if (params.error) {
+                statusElement.textContent = 'Authentication failed: ' + params.error;
+                if (params.error_description) {
+                    statusElement.textContent += ' - ' + params.error_description;
+                }
+                statusElement.className = 'error';
             } else {
-                document.getElementById('status').innerText = 'Authentication failed. Please try again.';
+                statusElement.textContent = 'No authentication data found in URL. This page should be accessed via the OAuth flow.';
+                statusElement.className = 'warning';
             }
         };
     </script>
     <style>
         body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            margin-top: 100px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.5;
+            color: #333;
+        }
+        h1 {
+            color: #0078d4;
         }
         .status {
-            padding: 20px;
-            background-color: #f5f5f5;
+            padding: 15px;
             border-radius: 5px;
-            display: inline-block;
+            margin: 20px 0;
+        }
+        .success {
+            background-color: #dff0d8;
+            color: #3c763d;
+            border: 1px solid #d6e9c6;
+        }
+        .error {
+            background-color: #f2dede;
+            color: #a94442;
+            border: 1px solid #ebccd1;
+        }
+        .warning {
+            background-color: #fcf8e3;
+            color: #8a6d3b;
+            border: 1px solid #faebcc;
+        }
+        .debug {
+            background-color: #f5f5f5;
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            word-break: break-all;
+            max-height: 300px;
+            overflow: auto;
         }
     </style>
 </head>
 <body>
-    <div class="status">
-        <h2>Salesforce Authentication</h2>
-        <p id="status">Processing authentication...</p>
-    </div>
+    <h1>Salesforce Authentication</h1>
+    <div id="status" class="status">Processing authentication response...</div>
+    
+    <h2>Debug Information</h2>
+    <div id="debug-info" class="debug"></div>
+    
+    <p>You can close this window after the authentication process completes.</p>
 </body>
 </html> 

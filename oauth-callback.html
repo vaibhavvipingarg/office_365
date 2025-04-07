@@ -1,150 +1,40 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Salesforce OAuth Callback</title>
-  <style>
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      text-align: center;
-      padding: 20px;
-      background-color: #f5f5f5;
-    }
-    .container {
-      max-width: 500px;
-      margin: 0 auto;
-      background-color: white;
-      padding: 20px;
-      border-radius: 4px;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    }
-    h2 {
-      color: #0078d4;
-    }
-    .progress {
-      margin: 20px 0;
-    }
-    .success {
-      color: green;
-    }
-    .error {
-      color: red;
-    }
-    pre {
-      text-align: left;
-      background-color: #f0f0f0;
-      padding: 10px;
-      border-radius: 4px;
-      overflow: auto;
-      max-height: 200px;
-      font-size: 12px;
-    }
-    .debug {
-      margin-top: 20px;
-      font-size: 12px;
-      color: #666;
-    }
-  </style>
+    <meta charset="UTF-8" />
+    <title>Redirecting...</title>
+    <script>
+        // This file is a compatibility fix for any hardcoded paths
+        // It redirects from /oauth-callback.html to the correct path /oauth/callback/
+        window.onload = function() {
+            // Preserve the hash and query parameters when redirecting
+            const redirectUrl = '/office_365/oauth/callback/' + window.location.search + window.location.hash;
+            console.log('Redirecting from compatibility path to:', redirectUrl);
+            window.location.href = redirectUrl;
+        };
+    </script>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            text-align: center;
+            margin: 50px auto;
+            max-width: 600px;
+            line-height: 1.5;
+        }
+        .message {
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            border: 1px solid #dee2e6;
+            margin: 20px 0;
+        }
+    </style>
 </head>
 <body>
-  <div class="container">
-    <h2>Salesforce Authentication</h2>
-    <div id="status" class="progress">Processing authentication response...</div>
-    <div id="debug" class="debug"></div>
-  </div>
-
-  <script>
-    (function() {
-      // Parse the access token from the hash fragment
-      function parseHash() {
-        const hash = window.location.hash.substring(1);
-        const params = {};
-        
-        if (hash) {
-          hash.split('&').forEach(param => {
-            const [key, value] = param.split('=');
-            params[key] = decodeURIComponent(value);
-          });
-        }
-        
-        return params;
-      }
-
-      // Set debug info
-      function setDebugInfo(info) {
-        const debugElement = document.getElementById('debug');
-        if (debugElement) {
-          const pre = document.createElement('pre');
-          pre.textContent = JSON.stringify(info, null, 2);
-          debugElement.innerHTML = 'Debug Information:';
-          debugElement.appendChild(pre);
-        }
-      }
-
-      // Main function to handle the OAuth callback
-      function handleCallback() {
-        const statusElement = document.getElementById('status');
-        const params = parseHash();
-        
-        // Debug information
-        setDebugInfo({
-          url: window.location.href,
-          hash: window.location.hash,
-          params: params,
-          opener: !!window.opener,
-          origin: window.location.origin
-        });
-        
-        if (params.access_token) {
-          statusElement.textContent = 'Authentication successful!';
-          statusElement.className = 'success';
-          
-          // Send the token back to the parent window
-          if (window.opener && !window.opener.closed) {
-            try {
-              console.log('Sending token to opener window');
-              window.opener.postMessage({
-                type: 'salesforce_oauth_response',
-                access_token: params.access_token,
-                instance_url: params.instance_url,
-                id: params.id
-              }, window.location.origin);
-              
-              // Close this window automatically after a delay
-              setTimeout(() => {
-                window.close();
-              }, 2000);
-            } catch (error) {
-              statusElement.textContent = `Error sending data to opener: ${error.message}`;
-              statusElement.className = 'error';
-              setDebugInfo({ error: error.message, stack: error.stack });
-            }
-          } else {
-            statusElement.textContent = 'Authentication successful, but opener window not available.';
-            statusElement.className = 'error';
-          }
-        } else if (params.error) {
-          statusElement.textContent = `Authentication error: ${params.error}`;
-          statusElement.className = 'error';
-          
-          if (window.opener && !window.opener.closed) {
-            try {
-              window.opener.postMessage({
-                type: 'salesforce_oauth_response',
-                error: params.error
-              }, window.location.origin);
-            } catch (error) {
-              setDebugInfo({ error: error.message, stack: error.stack });
-            }
-          }
-        } else {
-          statusElement.textContent = 'No authentication data found in URL';
-          statusElement.className = 'error';
-        }
-      }
-
-      // Run the callback handler when the page loads
-      window.addEventListener('DOMContentLoaded', handleCallback);
-    })();
-  </script>
+    <div class="message">
+        <h1>Redirecting...</h1>
+        <p>This page is redirecting you to the correct OAuth callback URL.</p>
+        <p>If you're not redirected automatically, <a href="/office_365/oauth/callback/">click here</a>.</p>
+    </div>
 </body>
 </html> 
