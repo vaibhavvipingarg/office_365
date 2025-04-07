@@ -146,3 +146,49 @@ See [WEB-USAGE.md](./WEB-USAGE.md) for detailed instructions on using the add-in
 ## 📝 License
 
 MIT 
+
+# Tableau Next for Office 365
+
+This Office 365 add-in enables seamless integration between Tableau Analytics and Microsoft Office applications. Users can easily browse, select, and insert Tableau dashboards and metrics into their Office documents.
+
+## Features
+
+- **Authentication**: Securely connect to Salesforce to access Tableau Analytics data.
+- **Dashboard Browser**: View and select from available Tableau dashboards.
+- **Metrics Display**: Browse and insert Tableau metrics into documents.
+- **Office Integration**: Insert formatted Tableau content into Office documents with a clean, professional appearance.
+
+## Development
+
+This project uses React, TypeScript, and the Office.js API for Microsoft Office integration.
+
+### Getting Started
+
+1. Clone the repository
+2. Install dependencies:
+   ```
+   npm install
+   ```
+3. Start the development server:
+   ```
+   npm run standalone
+   ```
+
+### Building for Production
+
+```
+npm run build
+```
+
+## Configuration
+
+To use with your own Salesforce instance, you'll need to:
+
+1. Create a Connected App in Salesforce Setup
+2. Configure the OAuth settings
+3. Set the callback URL to match your deployment URL
+4. Update the client ID in the application settings
+
+## License
+
+Confidential and proprietary software of Salesforce.com, Inc. 
