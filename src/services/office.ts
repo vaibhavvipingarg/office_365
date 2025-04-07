@@ -9,85 +9,25 @@ export const OfficeService = {
         return;
       }
 
-      // Depending on the type of content, format it accordingly
-      const isMetric = content && content.hasOwnProperty('id') && content.hasOwnProperty('label');
-      let htmlContent = '';
-
-      if (isMetric) {
-        // Format metric data
-        htmlContent = `
-          <div style="font-family: 'Segoe UI', sans-serif; padding: 15px; border: 1px solid #e1e1e1; border-radius: 6px; max-width: 600px;">
-            <div style="display: flex; align-items: center; margin-bottom: 12px;">
-              <div style="font-size: 18px; font-weight: 600; color: #0078d4;">${content.label || 'Unknown Metric'}</div>
-              <div style="margin-left: auto; font-size: 12px; color: #605e5c;">${content.type || 'Metric'}</div>
-            </div>
-            ${content.description ? `<div style="margin-bottom: 12px;">${content.description}</div>` : ''}
-            <table style="width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 12px;">
-              <tr>
-                <td style="padding: 4px 0; color: #605e5c;">Creator:</td>
-                <td style="padding: 4px 0; text-align: right;">${content.creatorName || 'Unknown'}</td>
-              </tr>
-              <tr>
-                <td style="padding: 4px 0; color: #605e5c;">Created:</td>
-                <td style="padding: 4px 0; text-align: right;">${formatDate(content.createdDate)}</td>
-              </tr>
-              <tr>
-                <td style="padding: 4px 0; color: #605e5c;">Workspace:</td>
-                <td style="padding: 4px 0; text-align: right;">${content.namespace || 'Default'}</td>
-              </tr>
-            </table>
-            <div style="font-size: 11px; color: #a19f9d; border-top: 1px solid #e1e1e1; padding-top: 8px;">
-              Metric ID: ${content.id || 'Unknown'}
-            </div>
-          </div>
-        `;
-      } else {
-        // Format dashboard data
-        htmlContent = `
-          <div style="font-family: 'Segoe UI', sans-serif; padding: 15px; border: 1px solid #e1e1e1; border-radius: 6px; max-width: 600px;">
-            <div style="display: flex; align-items: center; margin-bottom: 12px;">
-              <div style="font-size: 18px; font-weight: 600; color: #0078d4;">${content.MasterLabel || content.Name || 'Unknown Dashboard'}</div>
-              <div style="margin-left: auto; font-size: 12px; color: #605e5c;">${content.AnalyticsWorkspace?.MasterLabel || 'Dashboard'}</div>
-            </div>
-            ${content.Description ? `<div style="margin-bottom: 12px;">${content.Description}</div>` : ''}
-            <table style="width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 12px;">
-              <tr>
-                <td style="padding: 4px 0; color: #605e5c;">Creator:</td>
-                <td style="padding: 4px 0; text-align: right;">${content.CreatedBy?.Name || 'Unknown'}</td>
-              </tr>
-              <tr>
-                <td style="padding: 4px 0; color: #605e5c;">Created:</td>
-                <td style="padding: 4px 0; text-align: right;">${formatDate(content.CreatedDate)}</td>
-              </tr>
-              <tr>
-                <td style="padding: 4px 0; color: #605e5c;">Workspace:</td>
-                <td style="padding: 4px 0; text-align: right;">${content.AnalyticsWorkspace?.MasterLabel || 'Default'}</td>
-              </tr>
-            </table>
-            <div style="font-size: 11px; color: #a19f9d; border-top: 1px solid #e1e1e1; padding-top: 8px;">
-              Dashboard ID: ${content.Id || 'Unknown'}
-            </div>
-          </div>
-        `;
-      }
+      // Format the content as HTML
+      const htmlContent = this.formatContentAsHtml(content);
 
       // Insert the formatted content into the document
-      await window.Office.context.document.setSelectedDataAsync(
-        htmlContent,
-        {
-          coercionType: window.Office.CoercionType.Html
-        },
-        (result) => {
-          if (result.status === window.Office.AsyncResultStatus.Succeeded) {
-            console.log('Content inserted successfully');
-          } else {
-            console.error('Error inserting content:', result.error);
+      return new Promise((resolve, reject) => {
+        Office.context.document.setSelectedDataAsync(
+          htmlContent,
+          { coercionType: Office.CoercionType.Html },
+          (result) => {
+            if (result.status === Office.AsyncResultStatus.Succeeded) {
+              console.log('Content inserted successfully');
+              resolve(true);
+            } else {
+              console.error('Error inserting content:', result.error);
+              reject(result.error);
+            }
           }
-        }
-      );
-
-      console.log('Content insertion process completed');
-      return true;
+        );
+      });
     } catch (error) {
       console.error('Error inserting content into document:', error);
       throw error;
@@ -148,28 +88,144 @@ export const OfficeService = {
 
   async insertImageFromElement(element: HTMLElement): Promise<void> {
     try {
-      const canvas = await html2canvas(element);
-      const imageDataUrl = canvas.toDataURL();
-      await this.insertImage(imageDataUrl);
+      console.log('Starting image capture process...');
+      
+      // First try to capture as image
+      const canvas = await html2canvas(element, {
+        logging: true,
+        useCORS: true,
+        allowTaint: true,
+        background: '#ffffff'
+      });
+      
+      console.log('Canvas created successfully');
+      
+      const imageDataUrl = canvas.toDataURL('image/png', 1.0);
+      console.log('Image data URL created');
+
+      return new Promise((resolve, reject) => {
+        try {
+          // Try to insert as image first
+          Office.context.document.setSelectedDataAsync(
+            imageDataUrl,
+            { coercionType: Office.CoercionType.Image },
+            (result) => {
+              if (result.status === Office.AsyncResultStatus.Succeeded) {
+                console.log('Image inserted successfully');
+                resolve();
+              } else {
+                console.warn('Failed to insert as image, falling back to HTML insertion:', result.error);
+                // If image insertion fails, fall back to HTML insertion
+                this.insertAsHtml(element)
+                  .then(resolve)
+                  .catch(reject);
+              }
+            }
+          );
+        } catch (error) {
+          console.error('Error in image insertion:', error);
+          // Fall back to HTML insertion
+          this.insertAsHtml(element)
+            .then(resolve)
+            .catch(reject);
+        }
+      });
     } catch (error) {
-      console.error('Error inserting image from element:', error);
-      throw error;
+      console.error('Error in image capture:', error);
+      // If image capture fails, fall back to HTML insertion
+      return this.insertAsHtml(element);
+    }
+  },
+
+  async insertAsHtml(element: HTMLElement): Promise<void> {
+    console.log('Falling back to HTML insertion');
+    const htmlContent = element.outerHTML;
+    
+    return new Promise((resolve, reject) => {
+      Office.context.document.setSelectedDataAsync(
+        htmlContent,
+        { coercionType: Office.CoercionType.Html },
+        (result) => {
+          if (result.status === Office.AsyncResultStatus.Succeeded) {
+            console.log('HTML content inserted successfully');
+            resolve();
+          } else {
+            console.error('Failed to insert HTML content:', result.error);
+            reject(new Error('Failed to insert content'));
+          }
+        }
+      );
+    });
+  },
+
+  formatContentAsHtml(content: any): string {
+    const isMetric = content && content.hasOwnProperty('id') && content.hasOwnProperty('label');
+    
+    if (isMetric) {
+      return `
+        <div style="font-family: 'Segoe UI', sans-serif; padding: 15px; border: 1px solid #e1e1e1; border-radius: 6px; max-width: 600px;">
+          <div style="display: flex; align-items: center; margin-bottom: 12px;">
+            <div style="font-size: 18px; font-weight: 600; color: #0078d4;">${content.label || 'Unknown Metric'}</div>
+            <div style="margin-left: auto; font-size: 12px; color: #605e5c;">${content.type || 'Metric'}</div>
+          </div>
+          ${content.description ? `<div style="margin-bottom: 12px;">${content.description}</div>` : ''}
+          <div style="font-size: 13px; margin-bottom: 8px;">
+            <span style="color: #605e5c;">Creator:</span>
+            <span style="float: right;">${content.creatorName || 'Unknown'}</span>
+          </div>
+          <div style="font-size: 13px; margin-bottom: 8px;">
+            <span style="color: #605e5c;">Created:</span>
+            <span style="float: right;">${this.formatDate(content.createdDate)}</span>
+          </div>
+          <div style="font-size: 13px; margin-bottom: 8px;">
+            <span style="color: #605e5c;">Workspace:</span>
+            <span style="float: right;">${content.namespace || 'Default'}</span>
+          </div>
+          <div style="font-size: 11px; color: #a19f9d; border-top: 1px solid #e1e1e1; padding-top: 8px;">
+            Metric ID: ${content.id || 'Unknown'}
+          </div>
+        </div>
+      `;
+    } else {
+      return `
+        <div style="font-family: 'Segoe UI', sans-serif; padding: 15px; border: 1px solid #e1e1e1; border-radius: 6px; max-width: 600px;">
+          <div style="display: flex; align-items: center; margin-bottom: 12px;">
+            <div style="font-size: 18px; font-weight: 600; color: #0078d4;">${content.MasterLabel || content.Name || 'Unknown Dashboard'}</div>
+            <div style="margin-left: auto; font-size: 12px; color: #605e5c;">${content.AnalyticsWorkspace?.MasterLabel || 'Dashboard'}</div>
+          </div>
+          ${content.Description ? `<div style="margin-bottom: 12px;">${content.Description}</div>` : ''}
+          <div style="font-size: 13px; margin-bottom: 8px;">
+            <span style="color: #605e5c;">Creator:</span>
+            <span style="float: right;">${content.CreatedBy?.Name || 'Unknown'}</span>
+          </div>
+          <div style="font-size: 13px; margin-bottom: 8px;">
+            <span style="color: #605e5c;">Created:</span>
+            <span style="float: right;">${this.formatDate(content.CreatedDate)}</span>
+          </div>
+          <div style="font-size: 13px; margin-bottom: 8px;">
+            <span style="color: #605e5c;">Workspace:</span>
+            <span style="float: right;">${content.AnalyticsWorkspace?.MasterLabel || 'Default'}</span>
+          </div>
+          <div style="font-size: 11px; color: #a19f9d; border-top: 1px solid #e1e1e1; padding-top: 8px;">
+            Dashboard ID: ${content.Id || 'Unknown'}
+          </div>
+        </div>
+      `;
+    }
+  },
+
+  formatDate(dateString: string): string {
+    if (!dateString) return 'Unknown';
+    
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+    } catch (e) {
+      return dateString;
     }
   }
-};
-
-// Helper function to format dates
-function formatDate(dateString: string): string {
-  if (!dateString) return 'Unknown';
-  
-  try {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
-  } catch (e) {
-    return dateString;
-  }
-} 
+}; 
