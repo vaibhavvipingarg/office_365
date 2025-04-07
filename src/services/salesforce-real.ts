@@ -227,7 +227,7 @@ export class SalesforceAuth {
       return [
         {
           Id: '0DyUA00000004GX0AY',
-          Name: 'New Dashboard',
+          DeveloperName: 'New_Dashboard',
           CreatedBy: { Name: 'Admin User' },
           Description: 'A dashboard',
           CreatedDate: '2024-08-19T16:36:05.000+0000',
@@ -237,7 +237,7 @@ export class SalesforceAuth {
         },
         {
           Id: '0DyUA00000002p1UAA',
-          Name: 'NE Sales',
+          DeveloperName: 'NE_Sales',
           CreatedBy: { Name: 'Admin User' },
           Description: 'A dashboard',
           CreatedDate: '2024-08-19T17:32:55.000+0000',
@@ -283,7 +283,7 @@ export class SalesforceAuth {
       console.log(`Making API call to ${instance.instanceUrl}`);
       
       const response = await fetch(`${instance.instanceUrl}/services/data/v64.0/query?q=${encodeURIComponent(
-        'SELECT Id, Name, CreatedBy.Name, Description, CreatedDate, MasterLabel, AnalyticsWorkspaceId, AnalyticsWorkspace.MasterLabel FROM AnalyticsDashboard LIMIT 5'
+        'SELECT Id, DeveloperName, CreatedBy.Name, Description, CreatedDate, MasterLabel, AnalyticsWorkspaceId, AnalyticsWorkspace.MasterLabel FROM AnalyticsDashboard LIMIT 5'
       )}`, {
         method: 'GET',
         headers: {
@@ -308,7 +308,7 @@ export class SalesforceAuth {
         // Extract the actual data from the record, ignoring the attributes field
         const {
           Id,
-          Name,
+          DeveloperName,
           CreatedBy,
           Description,
           CreatedDate,
@@ -323,11 +323,11 @@ export class SalesforceAuth {
         
         return {
           Id: Id || `dashboard-${Math.random().toString(36).substring(2, 10)}`,
-          Name: Name || MasterLabel || 'Untitled Dashboard',
+          Name: DeveloperName || MasterLabel || 'Untitled Dashboard',
           CreatedBy: CreatedBy || { Name: 'Unknown User' },
           Description: Description || 'No description',
           CreatedDate: CreatedDate,
-          MasterLabel: MasterLabel || Name || 'Untitled Dashboard',
+          MasterLabel: MasterLabel || DeveloperName || 'Untitled Dashboard',
           AnalyticsWorkspaceId: AnalyticsWorkspaceId || '',
           AnalyticsWorkspace: AnalyticsWorkspace || { MasterLabel: 'Unknown Workspace' },
           FormattedDate: formattedDate
