@@ -2,130 +2,76 @@
 <html>
 <head>
     <meta charset="UTF-8" />
-    <title>Processing Authentication...</title>
-    <script>
-        // This file handles the OAuth callback at the root URL
-        window.onload = function() {
-            // Process the callback directly here instead of redirecting
-            // Extract tokens from hash or search params
-            const params = {};
-            if (window.location.hash) {
-                window.location.hash.substring(1).split('&').forEach(function(pair) {
-                    const parts = pair.split('=');
-                    params[decodeURIComponent(parts[0])] = decodeURIComponent(parts[1] || '');
-                });
-            } else if (window.location.search) {
-                window.location.search.substring(1).split('&').forEach(function(pair) {
-                    const parts = pair.split('=');
-                    params[decodeURIComponent(parts[0])] = decodeURIComponent(parts[1] || '');
-                });
-            }
-            
-            document.getElementById('debug-info').textContent = JSON.stringify({
-                hash: window.location.hash,
-                search: window.location.search,
-                params: params,
-                hasOpener: !!window.opener,
-                origin: window.location.origin
-            }, null, 2);
-            
-            const statusElement = document.getElementById('status');
-            
-            if (params.access_token) {
-                statusElement.textContent = 'Authentication successful! Processing...';
-                statusElement.className = 'success';
-                
-                // Send the token back to the parent window
-                if (window.opener && !window.opener.closed) {
-                    try {
-                        console.log('Sending token to opener window');
-                        window.opener.postMessage({
-                            type: 'salesforce_oauth_response',
-                            access_token: params.access_token,
-                            instance_url: params.instance_url,
-                            id: params.id,
-                            expires_in: params.expires_in ? parseInt(params.expires_in, 10) : 7200
-                        }, '*');
-                        
-                        // Close this window after a delay
-                        setTimeout(function() {
-                            window.close();
-                        }, 3000);
-                    } catch (error) {
-                        statusElement.textContent = 'Error sending data to opener: ' + error.message;
-                        statusElement.className = 'error';
-                    }
-                } else {
-                    statusElement.textContent = 'Authentication successful, but unable to communicate with the main application. You can close this window.';
-                    statusElement.className = 'warning';
-                }
-            } else if (params.error) {
-                statusElement.textContent = 'Authentication failed: ' + params.error;
-                if (params.error_description) {
-                    statusElement.textContent += ' - ' + params.error_description;
-                }
-                statusElement.className = 'error';
-            } else {
-                statusElement.textContent = 'No authentication data found. This page should be accessed via the Salesforce OAuth flow.';
-                statusElement.className = 'warning';
-            }
-        };
-    </script>
+    <title>Salesforce OAuth Callback</title>
     <style>
-        body {
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-            text-align: center;
-            margin: 50px auto;
-            max-width: 800px;
-            line-height: 1.5;
-        }
-        h1 {
-            color: #0078d4;
-        }
-        .message {
-            margin: 20px 0;
-        }
-        .status {
-            padding: 15px;
-            border-radius: 5px;
-            margin: 20px 0;
-        }
-        .success {
-            background-color: #dff0d8;
-            color: #3c763d;
-            border: 1px solid #d6e9c6;
-        }
-        .error {
-            background-color: #f2dede;
-            color: #a94442;
-            border: 1px solid #ebccd1;
-        }
-        .warning {
-            background-color: #fcf8e3;
-            color: #8a6d3b;
-            border: 1px solid #faebcc;
-        }
-        .debug {
-            background-color: #f5f5f5;
-            border: 1px solid #ddd;
-            padding: 15px;
-            border-radius: 5px;
-            font-family: monospace;
-            white-space: pre-wrap;
-            word-break: break-all;
-            max-height: 300px;
-            overflow: auto;
-            text-align: left;
-        }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif; margin: 2em; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
     </style>
 </head>
 <body>
-    <h1>Salesforce Authentication</h1>
-    <div id="status" class="status">Processing authentication response...</div>
-    
-    <h2>Debug Information</h2>
-    <div id="debug-info" class="debug"></div>
-    
-    <p class="message">You can close this window after the authentication process completes.</p>
+    <h2>Processing Salesforce Authentication...</h2>
+    <div id="status">Please wait...</div>
+
+    <script>
+        (function() {
+            function getQueryParams() {
+                const params = {};
+                const hash = window.location.hash.substring(1);
+                const search = window.location.search.substring(1);
+                const queryString = hash || search;
+
+                queryString.split('&').forEach(pair => {
+                    if (pair === '') return;
+                    const [key, value] = pair.split('=');
+                    params[decodeURIComponent(key)] = decodeURIComponent(value || '');
+                });
+
+                return params;
+            }
+
+            function displayStatus(message, type) {
+                const statusEl = document.getElementById('status');
+                statusEl.textContent = message;
+                statusEl.className = type;
+            }
+
+            function handleCallback() {
+                const params = getQueryParams();
+                console.log('Received params:', params);
+
+                if (params.access_token) {
+                    displayStatus('Authentication successful! Processing...', 'success');
+                    
+                    if (window.opener) {
+                        try {
+                            window.opener.postMessage({
+                                type: 'salesforce_oauth_response',
+                                access_token: params.access_token,
+                                instance_url: params.instance_url,
+                                id: params.id,
+                                expires_in: params.expires_in
+                            }, '*');
+                            
+                            setTimeout(() => window.close(), 2000);
+                        } catch (error) {
+                            displayStatus('Error sending response to main window: ' + error.message, 'error');
+                        }
+                    } else {
+                        displayStatus('Authentication successful, but unable to communicate with the main application.', 'info');
+                    }
+                } else if (params.error) {
+                    displayStatus('Authentication error: ' + params.error + 
+                        (params.error_description ? ' - ' + params.error_description : ''), 'error');
+                } else {
+                    displayStatus('No authentication data received. This page should be accessed via Salesforce OAuth flow.', 'info');
+                }
+            }
+
+            // Run when the page loads
+            handleCallback();
+        })();
+    </script>
 </body>
 </html> 
