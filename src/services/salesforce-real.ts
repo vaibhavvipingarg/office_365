@@ -283,7 +283,7 @@ export class SalesforceAuth {
       console.log(`Making API call to ${instance.instanceUrl}`);
       
       const response = await fetch(`${instance.instanceUrl}/services/data/v64.0/query?q=${encodeURIComponent(
-        'SELECT CreatedBy.Name, Description, CreatedDate, MasterLabel, AnalyticsWorkspaceId, AnalyticsWorkspace.MasterLabel FROM AnalyticsDashboard LIMIT 5'
+        'SELECT Id, Name, CreatedBy.Name, Description, CreatedDate, MasterLabel, AnalyticsWorkspaceId, AnalyticsWorkspace.MasterLabel FROM AnalyticsDashboard LIMIT 5'
       )}`, {
         method: 'GET',
         headers: {
@@ -305,21 +305,32 @@ export class SalesforceAuth {
       return data.records.map((record: any) => {
         console.log('Processing dashboard record:', record);
         
+        // Extract the actual data from the record, ignoring the attributes field
+        const {
+          Id,
+          Name,
+          CreatedBy,
+          Description,
+          CreatedDate,
+          MasterLabel,
+          AnalyticsWorkspaceId,
+          AnalyticsWorkspace
+        } = record;
+        
         // Format the creation date
-        const createdDate = record.CreatedDate ? 
-          new Date(record.CreatedDate).toLocaleDateString() : 'N/A';
+        const formattedDate = CreatedDate ? 
+          new Date(CreatedDate).toLocaleDateString() : 'N/A';
         
         return {
-          Id: record.Id || `dashboard-${Math.random().toString(36).substring(2, 10)}`,
-          Name: record.MasterLabel || 'Untitled Dashboard',
-          CreatedBy: record.CreatedBy || { Name: 'Unknown User' },
-          Description: record.Description || 'No description',
-          CreatedDate: record.CreatedDate,
-          MasterLabel: record.MasterLabel || 'Untitled Dashboard',
-          AnalyticsWorkspaceId: record.AnalyticsWorkspaceId || '',
-          AnalyticsWorkspace: record.AnalyticsWorkspace || { MasterLabel: 'Unknown Workspace' },
-          // Additional fields for the card display
-          FormattedDate: createdDate
+          Id: Id || `dashboard-${Math.random().toString(36).substring(2, 10)}`,
+          Name: Name || MasterLabel || 'Untitled Dashboard',
+          CreatedBy: CreatedBy || { Name: 'Unknown User' },
+          Description: Description || 'No description',
+          CreatedDate: CreatedDate,
+          MasterLabel: MasterLabel || Name || 'Untitled Dashboard',
+          AnalyticsWorkspaceId: AnalyticsWorkspaceId || '',
+          AnalyticsWorkspace: AnalyticsWorkspace || { MasterLabel: 'Unknown Workspace' },
+          FormattedDate: formattedDate
         };
       });
     } catch (error) {
