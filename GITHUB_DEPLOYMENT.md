@@ -30,7 +30,7 @@ git push origin gh-pages
 3. Find your Connected App and edit it
 4. Under "OAuth Settings", add a new Callback URL:
    ```
-   https://vaibhavvipingarg.github.io/office_365/oauth/callback/
+   https://vaibhavvipingarg.github.io/office_365/oauth-callback.html
    ```
 5. Save the changes
 
