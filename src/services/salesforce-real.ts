@@ -15,7 +15,7 @@ export class SalesforceAuth {
   private static set CLIENT_ID(value: string) {
     localStorage.setItem('sf_client_id', value);
   }
-  private static readonly REDIRECT_URI = window.location.origin + '/oauth-callback.html';
+  private static readonly REDIRECT_URI = window.location.origin + '/office_365/oauth-callback.html';
   private static readonly LOGIN_URL = 'https://sdb42com6.test13.my.pc-rnd.salesforce.com';
 
   private constructor() {
