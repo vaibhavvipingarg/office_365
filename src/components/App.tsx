@@ -294,9 +294,9 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
   };
 
   return (
-    <Stack tokens={{ childrenGap: 15, padding: 20 }}>
+    <Stack tokens={{ childrenGap: 8, padding: '12px 8px' }}>
       <Stack horizontal verticalAlign="center" horizontalAlign="space-between">
-        <Text variant="xLarge" styles={{ root: { fontWeight: 600 } }}>Tableau Next + Office</Text>
+        <Text variant="large" styles={{ root: { fontWeight: 600 } }}>Tableau Next + Office</Text>
         
         {isAuthenticated && (
           <div style={{ 
@@ -308,9 +308,9 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
               style={{ 
                 backgroundColor: '#107C10', 
                 color: 'white', 
-                padding: '4px 10px',
-                borderRadius: '16px',
-                fontSize: '12px',
+                padding: '2px 8px',
+                borderRadius: '12px',
+                fontSize: '11px',
                 fontWeight: 600,
                 display: 'flex',
                 alignItems: 'center',
@@ -319,7 +319,7 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
               onMouseEnter={() => setShowClientInfo(true)}
               onMouseLeave={() => setShowClientInfo(false)}
             >
-              <Icon iconName="PlugConnected" style={{ marginRight: 6, fontSize: '10px' }} />
+              <Icon iconName="PlugConnected" style={{ marginRight: 4, fontSize: '10px' }} />
               Connected
             </div>
             
@@ -328,13 +328,13 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
                 position: 'absolute',
                 top: '100%',
                 right: 0,
-                marginTop: '8px',
+                marginTop: '6px',
                 backgroundColor: 'white',
                 boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
-                padding: '8px 12px',
+                padding: '6px 10px',
                 borderRadius: '4px',
                 zIndex: 100,
-                fontSize: '12px',
+                fontSize: '11px',
                 whiteSpace: 'nowrap'
               }}>
                 Using Salesforce Client ID: {localStorage.getItem('sf_client_id')?.substring(0, 8)}...
@@ -345,42 +345,65 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
       </Stack>
       
       {error && (
-        <MessageBar messageBarType={MessageBarType.error} onDismiss={() => setError(null)}>
+        <MessageBar 
+          messageBarType={MessageBarType.error} 
+          onDismiss={() => setError(null)}
+          styles={{
+            root: { padding: '8px' },
+            text: { fontSize: '11px' }
+          }}
+        >
           {error}
         </MessageBar>
       )}
 
       {loading && (
         <Spinner 
-          size={SpinnerSize.medium} 
+          size={SpinnerSize.small}
           label={isAuthenticated ? "Loading Salesforce data..." : "Processing authentication..."} 
-          styles={{ root: { margin: '10px 0' } }}
+          styles={{ 
+            root: { margin: '6px 0' },
+            label: { fontSize: '11px' }
+          }}
         />
       )}
 
       {!isAuthenticated ? (
-        <Stack tokens={{ childrenGap: 10 }}>
+        <Stack tokens={{ childrenGap: 8 }}>
           <PrimaryButton
             text="Connect to Salesforce"
             onClick={handleLogin}
             disabled={loading}
             iconProps={{ iconName: 'Plug' }}
+            styles={{
+              root: { height: '32px' },
+              label: { fontSize: '12px' }
+            }}
           />
           
           <DefaultButton
             text="Configure Salesforce Connection"
             onClick={() => setShowConfig(true)}
             iconProps={{ iconName: 'Settings' }}
+            styles={{
+              root: { height: '32px' },
+              label: { fontSize: '12px' }
+            }}
           />
         </Stack>
       ) : (
-        <Stack tokens={{ childrenGap: 15 }}>
+        <Stack tokens={{ childrenGap: 8 }}>
           {(dashboardData || metricsData) && (
-            <Stack tokens={{ childrenGap: 8, padding: '15px 0' }}>
+            <Stack tokens={{ childrenGap: 4 }}>
               <Pivot 
                 selectedKey={activeTab} 
                 onLinkClick={(item) => item && setActiveTab(item.props.itemKey || 'dashboards')}
-                styles={{ root: { marginBottom: 15 } }}
+                styles={{ 
+                  root: { marginBottom: 8 },
+                  link: { height: '32px', minWidth: 'auto' },
+                  linkContent: { fontSize: '12px' },
+                  count: { fontSize: '11px', marginLeft: '4px' }
+                }}
               >
                 <PivotItem 
                   headerText="Dashboards" 
@@ -402,7 +425,7 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
                 />
               </Pivot>
               
-              <div style={{ maxHeight: '500px', overflowY: 'auto', padding: '4px 0' }}>
+              <div style={{ maxHeight: 'calc(100vh - 180px)', overflowY: 'auto', padding: '0 4px', marginRight: '-4px' }}>
                 {activeTab === 'dashboards' && dashboardData && dashboardData.map((item, index) => (
                   <SalesforceDataCard 
                     key={item.Id || index} 
@@ -422,11 +445,15 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
                 ))}
                 
                 {activeTab === 'dashboards' && (!dashboardData || dashboardData.length === 0) && (
-                  <MessageBar>No dashboard data available.</MessageBar>
+                  <MessageBar styles={{ text: { fontSize: '11px' } }}>
+                    No dashboard data available.
+                  </MessageBar>
                 )}
                 
                 {activeTab === 'metrics' && (!metricsData || metricsData.length === 0) && (
-                  <MessageBar>No metrics data available.</MessageBar>
+                  <MessageBar styles={{ text: { fontSize: '11px' } }}>
+                    No metrics data available.
+                  </MessageBar>
                 )}
               </div>
             </Stack>

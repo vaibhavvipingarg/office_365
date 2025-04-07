@@ -6,7 +6,6 @@ import {
   Icon, 
   mergeStyleSets, 
   getTheme,
-  Link
 } from '@fluentui/react';
 
 interface SalesforceDataCardProps {
@@ -18,70 +17,80 @@ interface SalesforceDataCardProps {
 const theme = getTheme();
 const styles = mergeStyleSets({
   card: {
-    padding: 16,
-    marginBottom: 12,
+    padding: '8px',
+    marginBottom: '8px',
     borderRadius: 4,
-    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
     backgroundColor: 'white',
-    borderLeft: `4px solid ${theme.palette.themePrimary}`,
+    borderLeft: `3px solid ${theme.palette.themePrimary}`,
     transition: 'all 0.2s ease',
     cursor: 'pointer',
     ':hover': {
-      boxShadow: '0 4px 8px rgba(0, 0, 0, 0.15)',
-      transform: 'translateY(-2px)'
+      boxShadow: '0 2px 4px rgba(0, 0, 0, 0.15)',
+      transform: 'translateY(-1px)'
     }
   },
   selectedCard: {
     backgroundColor: theme.palette.neutralLighterAlt,
-    boxShadow: '0 0 0 2px ' + theme.palette.themePrimary,
-    borderLeft: `4px solid ${theme.palette.themeDarker}`,
+    boxShadow: '0 0 0 1px ' + theme.palette.themePrimary,
   },
   header: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12
+    marginBottom: 6
   },
   title: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: FontWeights.semibold,
-    color: theme.palette.themePrimary
+    color: theme.palette.themePrimary,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    maxWidth: '180px'
   },
   workspace: {
     display: 'flex',
     alignItems: 'center',
-    fontSize: 12,
-    padding: '3px 8px',
-    borderRadius: 12,
+    fontSize: 11,
+    padding: '2px 6px',
+    borderRadius: 8,
     backgroundColor: theme.palette.neutralLighter,
     color: theme.palette.neutralPrimary,
-    marginLeft: 8
+    marginLeft: 6,
+    maxWidth: '100px',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap'
   },
   icon: {
-    fontSize: 14,
-    marginRight: 6,
+    fontSize: 12,
+    marginRight: 4,
     color: theme.palette.neutralTertiary
   },
   detailsRow: {
     display: 'flex',
-    fontSize: 13,
-    marginBottom: 6,
+    fontSize: 11,
+    marginBottom: 4,
     alignItems: 'center'
   },
   label: {
-    width: 80,
-    fontSize: 12,
+    width: 60,
+    fontSize: 11,
     color: theme.palette.neutralSecondary
   },
   value: {
     flex: 1,
-    color: theme.palette.neutralPrimary
+    color: theme.palette.neutralPrimary,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap'
   },
   description: {
-    fontSize: 13,
+    fontSize: 11,
     color: theme.palette.neutralSecondary,
-    marginBottom: 12,
-    maxHeight: 40,
+    marginBottom: 6,
+    maxHeight: 28,
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     display: '-webkit-box',
@@ -90,20 +99,20 @@ const styles = mergeStyleSets({
   },
   footerSection: {
     borderTop: `1px solid ${theme.palette.neutralLighter}`,
-    marginTop: 12,
-    paddingTop: 8,
+    marginTop: 6,
+    paddingTop: 4,
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    fontSize: 11,
+    fontSize: 10,
     color: theme.palette.neutralSecondary
   },
   selectIndicator: {
     position: 'absolute',
-    top: 10,
-    right: 10,
+    top: 6,
+    right: 6,
     color: theme.palette.themePrimary,
-    fontSize: 16
+    fontSize: 12
   }
 });
 
@@ -124,7 +133,7 @@ export const SalesforceDataCard: React.FC<SalesforceDataCardProps> = ({
     try {
       const date = new Date(dateString);
       return date.toLocaleDateString(undefined, { 
-        year: 'numeric', 
+        year: '2-digit', 
         month: 'short', 
         day: 'numeric' 
       });
@@ -151,46 +160,38 @@ export const SalesforceDataCard: React.FC<SalesforceDataCardProps> = ({
         <Icon iconName="CheckMark" className={styles.selectIndicator} />
       )}
       <div className={styles.header}>
-        <Stack horizontal>
-          <Text className={styles.title}>{item.MasterLabel || item.DeveloperName}</Text>
-          <div className={styles.workspace}>
+        <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 4 }}>
+          <Text className={styles.title} title={item.MasterLabel || item.DeveloperName}>
+            {item.MasterLabel || item.DeveloperName}
+          </Text>
+          <div className={styles.workspace} title={item.AnalyticsWorkspace?.MasterLabel || 'No Workspace'}>
             <Icon iconName="FolderHorizontal" className={styles.icon} />
             {item.AnalyticsWorkspace?.MasterLabel || 'No Workspace'}
           </div>
         </Stack>
-        <Icon iconName={getDashboardIcon()} style={{ fontSize: 20, color: theme.palette.themePrimary }} />
       </div>
 
       {item.Description && (
-        <div className={styles.description}>
+        <div className={styles.description} title={item.Description}>
           {item.Description}
         </div>
       )}
 
       <div className={styles.detailsRow}>
-        <span className={styles.label}>Created By:</span>
+        <span className={styles.label}>Created:</span>
         <span className={styles.value}>
-          <Icon iconName="Contact" style={{ fontSize: 14, marginRight: 6 }} />
+          <Icon iconName="Calendar" style={{ fontSize: 10, marginRight: 4 }} />
+          {formatDate(item.CreatedDate)}
+          <span style={{ margin: '0 4px', color: theme.palette.neutralTertiary }}>•</span>
+          <Icon iconName="Contact" style={{ fontSize: 10, marginRight: 4 }} />
           {item.CreatedBy?.Name || 'Unknown'}
         </span>
       </div>
 
-      <div className={styles.detailsRow}>
-        <span className={styles.label}>Created:</span>
-        <span className={styles.value}>
-          <Icon iconName="Calendar" style={{ fontSize: 14, marginRight: 6 }} />
-          {formatDate(item.CreatedDate)}
-        </span>
-      </div>
-
       <div className={styles.footerSection}>
-        <span>
-          <Icon iconName="ViewDashboard" style={{ fontSize: 14, marginRight: 6 }} />
-          Dashboard ID: {item.Id}
-        </span>
-        <span>
-          <Icon iconName="Clock" style={{ fontSize: 14, marginRight: 6 }} />
-          {formatDate(item.CreatedDate)}
+        <span style={{ fontSize: 10 }}>
+          <Icon iconName="ViewDashboard" style={{ fontSize: 10, marginRight: 4 }} />
+          ID: {item.Id?.substring(0, 10)}...
         </span>
       </div>
     </div>
