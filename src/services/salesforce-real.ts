@@ -247,7 +247,7 @@ export class SalesforceAuth {
         },
         {
           Id: '0DyUA00000002p2UAA',
-          Name: 'New Dashboard',
+          DeveloperName: 'New_Dashboard_2',
           CreatedBy: { Name: 'Admin User' },
           Description: 'A dashboard',
           CreatedDate: '2024-08-19T18:58:49.000+0000',
@@ -257,7 +257,7 @@ export class SalesforceAuth {
         },
         {
           Id: '0DyUA0000000BDB0A2',
-          Name: 'BK Dashboard',
+          DeveloperName: 'BK_Dashboard',
           CreatedBy: { Name: 'Admin User' },
           Description: 'A dashboard',
           CreatedDate: '2024-08-21T09:18:45.000+0000',
@@ -267,7 +267,7 @@ export class SalesforceAuth {
         },
         {
           Id: '0DyUA0000000BOT0A2',
-          Name: 'New Dashboard',
+          DeveloperName: 'New_Dashboard_3',
           CreatedBy: { Name: 'Admin User' },
           Description: 'A dashboard',
           CreatedDate: '2024-08-21T09:55:45.000+0000',
