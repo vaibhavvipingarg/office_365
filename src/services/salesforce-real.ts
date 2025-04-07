@@ -440,10 +440,57 @@ export class SalesforceAuth {
       const data = await response.json();
       console.log('Received metrics data from Salesforce API:', data);
       
-      // Extract the metrics from the response
-      const metrics = data.followedAssets || [];
+      // Transform the followedAssets array into our expected format
+      if (data.followedAssets && Array.isArray(data.followedAssets)) {
+        return data.followedAssets.map((metric: any) => {
+          // Extract the base properties we need
+          const {
+            assetType,
+            createdBy,
+            createdDate,
+            description,
+            filterLogic,
+            filters,
+            id,
+            label,
+            lastModifiedBy,
+            lastModifiedDate,
+            modelId,
+            name,
+            semanticMetricId,
+            timeRange,
+            followedTimeRange
+          } = metric;
+
+          // Format dates
+          const formattedCreatedDate = createdDate ? 
+            new Date(createdDate).toLocaleDateString() : 'N/A';
+          const formattedModifiedDate = lastModifiedDate ? 
+            new Date(lastModifiedDate).toLocaleDateString() : 'N/A';
+
+          return {
+            id: id || `metric-${Math.random().toString(36).substring(2, 10)}`,
+            assetType: assetType || 'semanticsubmetric',
+            label: label || name || 'Untitled Metric',
+            name: name || label || 'Untitled Metric',
+            description: description || '',
+            createdBy: createdBy || { Name: 'Unknown User' },
+            createdDate: createdDate,
+            formattedCreatedDate: formattedCreatedDate,
+            lastModifiedBy: lastModifiedBy || createdBy || { Name: 'Unknown User' },
+            lastModifiedDate: lastModifiedDate || createdDate,
+            formattedModifiedDate: formattedModifiedDate,
+            modelId: modelId || '',
+            semanticMetricId: semanticMetricId || '',
+            filterLogic: filterLogic || '',
+            filters: filters || [],
+            timeRange: timeRange || followedTimeRange || null,
+            type: 'Semantic Metric'
+          };
+        });
+      }
       
-      return metrics;
+      return [];
     } catch (error) {
       console.error('Salesforce metrics data fetch error:', error);
       throw error;
