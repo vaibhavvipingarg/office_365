@@ -453,7 +453,7 @@ export class SalesforceAuth {
           data.followedAssets.map(async (metric: any) => {
             try {
               console.log(`Fetching metadata for metric ${metric.id}`);
-              const metadataResponse = await fetch(`${instance.instanceUrl}/tableau/download?metadataOnly=true`, {
+              const metadataResponse = await fetch(`${instance.instanceUrl}/services/data/v64.0/tableau/download?metadataOnly=true`, {
                 method: 'POST',
                 headers: {
                   'Authorization': `Bearer ${instance.accessToken}`,
