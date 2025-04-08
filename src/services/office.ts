@@ -3,6 +3,7 @@ import html2canvas from 'html2canvas';
 // Add type declarations at the top of the file
 declare global {
   interface Window {
+    PowerPoint: any; // Add PowerPoint to global declarations
     $Lightning: {
       use: (
         appName: string,
@@ -88,34 +89,50 @@ export const OfficeService = {
           formattedContent = this.formatContentAsHtml(content);
           break;
         case 'PowerPoint':
-          // For PowerPoint, we need to use the document API with text coercion
-          if (content.capturedImage) {
-            // Convert image to base64 and insert as text
-            formattedContent = content.capturedImage;
-            coercionType = Office.CoercionType.Text;
-          } else {
-            // Try to capture the content as an image first
-            try {
-              const element = document.querySelector('[id^="preview-lightning-"]');
-              if (element) {
-                const canvas = await html2canvas(element as HTMLElement, {
-                  logging: true,
-                  useCORS: true,
-                  allowTaint: true,
-                  background: '#ffffff'
-                });
-                formattedContent = canvas.toDataURL('image/png', 1.0);
-                coercionType = Office.CoercionType.Text;
+          try {
+            // For PowerPoint, we'll use PowerPoint.run() to insert images
+            return await PowerPoint.run(async (context) => {
+              let imageData;
+              
+              if (content.capturedImage) {
+                // Get the base64 data without the data URL prefix
+                imageData = content.capturedImage.split(',')[1];
               } else {
-                // Fallback to text if no image can be captured
-                formattedContent = this.formatContentForPowerPoint(content);
-                coercionType = Office.CoercionType.Text;
+                // Try to capture the content as an image
+                const element = document.querySelector('[id^="preview-lightning-"]');
+                if (element) {
+                  const canvas = await html2canvas(element as HTMLElement, {
+                    logging: true,
+                    useCORS: true,
+                    allowTaint: true,
+                    background: '#ffffff'
+                  });
+                  const imageDataUrl = canvas.toDataURL('image/png', 1.0);
+                  imageData = imageDataUrl.split(',')[1];
+                } else {
+                  throw new Error('No content to capture as image');
+                }
               }
-            } catch (error) {
-              console.error('Failed to capture content as image:', error);
-              formattedContent = this.formatContentForPowerPoint(content);
-              coercionType = Office.CoercionType.Text;
-            }
+
+              // Get the active slide and add the image
+              const slide = context.presentation.slides.getActiveSlide();
+              const shape = slide.shapes.addImage(imageData);
+              
+              // Set position and size
+              shape.left = 50;  // pixels from left
+              shape.top = 50;   // pixels from top
+              shape.width = 400; // width in pixels
+              shape.height = 300; // height in pixels
+
+              await context.sync();
+              console.log('Image inserted successfully in PowerPoint');
+              return true;
+            });
+          } catch (error) {
+            console.error('Failed to insert image in PowerPoint:', error);
+            // Fallback to text if image insertion fails
+            formattedContent = this.formatContentForPowerPoint(content);
+            coercionType = Office.CoercionType.Text;
           }
           break;
         case 'Outlook':
@@ -143,7 +160,7 @@ export const OfficeService = {
             }
           );
         } else {
-          // For Word and PowerPoint, we use the document API
+          // For Word, we use the document API
           Office.context.document.setSelectedDataAsync(
             formattedContent,
             { coercionType },
