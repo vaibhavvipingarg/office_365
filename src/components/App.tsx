@@ -150,38 +150,38 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
         
         let attempts = 0;
         const maxAttempts = 30; // 30 seconds max wait time
-        let vizContainer = null;
+        let dashboardContainer = null;
         
-        // Wait for viz container
+        // Wait for dashboard container
         while (attempts < maxAttempts) {
-          vizContainer = document.querySelector('.viz-container');
-          if (vizContainer) {
-            console.log('Visualization container found, preparing to capture...');
+          dashboardContainer = document.querySelector('.tua-dashboard-container');
+          if (dashboardContainer) {
+            console.log('Dashboard container found, preparing to capture...');
             break;
           }
-          console.log(`Waiting for visualization to load (attempt ${attempts + 1}/${maxAttempts})...`);
+          console.log(`Waiting for dashboard to load (attempt ${attempts + 1}/${maxAttempts})...`);
           await new Promise(resolve => setTimeout(resolve, 1000));
           attempts++;
         }
 
-        if (!vizContainer) {
-          console.error('Timed out waiting for dashboard visualization to load');
-          throw new Error('Dashboard visualization failed to load');
+        if (!dashboardContainer) {
+          console.error('Timed out waiting for dashboard to load');
+          throw new Error('Dashboard failed to load');
         }
 
         // Give a small delay for final render
         await new Promise(resolve => setTimeout(resolve, 500));
-        console.log('Capturing dashboard visualization...');
+        console.log('Capturing dashboard...');
 
-        // Capture just the visualization container
-        const canvas = await html2canvas(vizContainer as HTMLElement, {
+        // Capture just the dashboard container
+        const canvas = await html2canvas(dashboardContainer as HTMLElement, {
           background: 'white',
           logging: false,
           useCORS: true,
           allowTaint: true
         });
 
-        console.log('Dashboard visualization captured successfully');
+        console.log('Dashboard captured successfully');
 
         const imageData = {
           ...selectedItem,
@@ -189,7 +189,7 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
         };
 
         await OfficeService.insertContent(imageData);
-        console.log('Dashboard visualization inserted into document');
+        console.log('Dashboard inserted into document');
       } else {
         // This is a metric - keep existing behavior
         const canvas = await html2canvas(previewElement, {
@@ -218,7 +218,7 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
         await OfficeService.insertContent(selectedItem);
       } else {
         // For dashboards, show error if capture fails
-        console.error('Failed to capture dashboard visualization');
+        console.error('Failed to capture dashboard');
       }
       setShowPreview(false);
     }
