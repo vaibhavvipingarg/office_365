@@ -148,15 +148,21 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
         // This is a dashboard
         console.log('Preparing to capture dashboard visualization...');
         
+        const containerId = `preview-lightning-${selectedItem.DeveloperName || 'unknown'}`;
+        const lightningContainer = document.getElementById(containerId);
+        if (!lightningContainer) {
+          throw new Error('Lightning container not found');
+        }
+
         let attempts = 0;
         const maxAttempts = 30; // 30 seconds max wait time
         let dashboardContainer = null;
         
-        // Wait for dashboard container
+        // Wait for dashboard container within the Lightning container
         while (attempts < maxAttempts) {
-          dashboardContainer = document.querySelector('.tua-dashboard-container');
+          dashboardContainer = lightningContainer.querySelector('.tua-dashboard-container');
           if (dashboardContainer) {
-            console.log('Dashboard container found, preparing to capture...');
+            console.log('Dashboard container found within Lightning Out, preparing to capture...');
             break;
           }
           console.log(`Waiting for dashboard to load (attempt ${attempts + 1}/${maxAttempts})...`);
