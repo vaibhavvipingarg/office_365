@@ -21,10 +21,55 @@ declare global {
         callback: (cmp: any) => void
       ) => void;
     }
+    Office: {
+      context: {
+        host: string;
+        mailbox?: {
+          item: {
+            body: {
+              setSelectedDataAsync: (
+                data: string,
+                options: { coercionType: string },
+                callback: (result: { status: string; error?: any }) => void
+              ) => void;
+            };
+          };
+        };
+        document: {
+          setSelectedDataAsync: (
+            data: string,
+            options: { coercionType: string },
+            callback: (result: { status: string; error?: any }) => void
+          ) => void;
+        };
+      };
+      AsyncResultStatus: {
+        Succeeded: string;
+        Failed: string;
+      };
+      CoercionType: {
+        Text: string;
+        Html: string;
+        Image: string;
+      };
+    };
   }
 }
 
 export const OfficeService = {
+  // Get the current Office host application
+  getHostType(): string {
+    if (!window.Office) {
+      return 'unknown';
+    }
+    return Office.context.host;
+  },
+
+  // Check if we're running in a specific host
+  isHostType(hostType: string): boolean {
+    return this.getHostType().toLowerCase() === hostType.toLowerCase();
+  },
+
   async insertContent(content: any) {
     try {
       // Check if running in Office context
@@ -33,24 +78,57 @@ export const OfficeService = {
         return;
       }
 
-      // Format the content as HTML
-      const htmlContent = this.formatContentAsHtml(content);
+      // Format the content based on the host application
+      const hostType = this.getHostType();
+      let formattedContent;
+
+      switch (hostType) {
+        case 'Word':
+          formattedContent = this.formatContentAsHtml(content);
+          break;
+        case 'PowerPoint':
+          formattedContent = this.formatContentForPowerPoint(content);
+          break;
+        case 'Outlook':
+          formattedContent = this.formatContentForOutlook(content);
+          break;
+        default:
+          formattedContent = this.formatContentAsHtml(content);
+      }
 
       // Insert the formatted content into the document
       return new Promise((resolve, reject) => {
-        Office.context.document.setSelectedDataAsync(
-          htmlContent,
-          { coercionType: Office.CoercionType.Html },
-          (result) => {
-            if (result.status === Office.AsyncResultStatus.Succeeded) {
-              console.log('Content inserted successfully');
-              resolve(true);
-            } else {
-              console.error('Error inserting content:', result.error);
-              reject(result.error);
+        if (this.isHostType('Outlook')) {
+          // For Outlook, we use the mailbox item API
+          Office.context.mailbox.item.body.setSelectedDataAsync(
+            formattedContent,
+            { coercionType: Office.CoercionType.Html },
+            (result) => {
+              if (result.status === Office.AsyncResultStatus.Succeeded) {
+                console.log('Content inserted successfully in Outlook');
+                resolve(true);
+              } else {
+                console.error('Error inserting content in Outlook:', result.error);
+                reject(result.error);
+              }
             }
-          }
-        );
+          );
+        } else {
+          // For Word and PowerPoint, we use the document API
+          Office.context.document.setSelectedDataAsync(
+            formattedContent,
+            { coercionType: Office.CoercionType.Html },
+            (result) => {
+              if (result.status === Office.AsyncResultStatus.Succeeded) {
+                console.log('Content inserted successfully');
+                resolve(true);
+              } else {
+                console.error('Error inserting content:', result.error);
+                reject(result.error);
+              }
+            }
+          );
+        }
       });
     } catch (error) {
       console.error('Error inserting content into document:', error);
@@ -369,5 +447,51 @@ export const OfficeService = {
         }
       );
     });
+  },
+
+  formatContentForPowerPoint(content: any): string {
+    // Format content specifically for PowerPoint
+    // This will create a more presentation-friendly layout
+    const title = content.title || 'Salesforce Data';
+    const description = content.description || '';
+    const data = content.data || {};
+
+    return `
+      <div style="font-family: 'Segoe UI', sans-serif; padding: 20px;">
+        <h2 style="color: #2b579a; font-size: 28px; margin-bottom: 15px;">${title}</h2>
+        ${description ? `<p style="font-size: 18px; color: #333; margin-bottom: 20px;">${description}</p>` : ''}
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
+          ${Object.entries(data).map(([key, value]) => `
+            <div style="background: #f5f5f5; padding: 15px; border-radius: 8px;">
+              <h3 style="color: #2b579a; margin: 0 0 10px 0;">${key}</h3>
+              <p style="font-size: 16px; margin: 0;">${value}</p>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  },
+
+  formatContentForOutlook(content: any): string {
+    // Format content specifically for Outlook
+    // This will create an email-friendly layout
+    const title = content.title || 'Salesforce Data';
+    const description = content.description || '';
+    const data = content.data || {};
+
+    return `
+      <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto;">
+        <h3 style="color: #0078d4; border-bottom: 1px solid #ccc; padding-bottom: 10px;">${title}</h3>
+        ${description ? `<p style="color: #333;">${description}</p>` : ''}
+        <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+          ${Object.entries(data).map(([key, value]) => `
+            <tr>
+              <td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold; width: 30%;">${key}</td>
+              <td style="padding: 8px; border-bottom: 1px solid #eee;">${value}</td>
+            </tr>
+          `).join('')}
+        </table>
+      </div>
+    `;
   }
 }; 
