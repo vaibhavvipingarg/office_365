@@ -168,22 +168,41 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
   const PreviewCard = ({ item }: { item: any }) => {
     const theme = getTheme();
     const [isLightningLoaded, setIsLightningLoaded] = useState(false);
-    const containerId = `preview-lightning-${Date.now()}`;
+    // Use a stable ID based on the dashboard ID
+    const containerId = `preview-lightning-${item.Id || item.id || 'unknown'}`;
     
     useEffect(() => {
+      let mounted = true;
+      
       // Only initialize Lightning component for dashboards
       if (!item.hasOwnProperty('id') && item.Id) {
         const accessToken = localStorage.getItem('sf_access_token');
         if (accessToken) {
           OfficeService.initializeLightningComponent(containerId, item.Id, accessToken)
-            .then(() => setIsLightningLoaded(true))
+            .then(() => {
+              if (mounted) {
+                setIsLightningLoaded(true);
+              }
+            })
             .catch(error => {
               console.error('Error initializing Lightning component:', error);
-              setIsLightningLoaded(false);
+              if (mounted) {
+                setIsLightningLoaded(false);
+              }
             });
         }
       }
-    }, [item, containerId]);
+      
+      // Cleanup function
+      return () => {
+        mounted = false;
+        // Clean up the Lightning component if it exists
+        const container = document.getElementById(containerId);
+        if (container) {
+          container.innerHTML = '';
+        }
+      };
+    }, [item.Id, containerId]); // Only depend on the item.Id, not the entire item
     
     const getDashboardIcon = () => {
       return 'ViewDashboard';
