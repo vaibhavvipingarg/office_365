@@ -162,18 +162,18 @@ export const MetricCard: React.FC<MetricCardProps> = ({
       <div className={styles.header}>
         <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 4 }}>
           <Text className={styles.title} title={item.label || item.name}>
-            {item.label || item.name}
+            {item.metadata?.root?.asset?.label || item.label || item.name}
           </Text>
           <div className={styles.type} title={item.assetType || 'Metric'}>
             <Icon iconName="Chart" className={styles.icon} />
-            {item.assetType || 'Metric'}
+            {item.metadata?.root?.asset?.type || item.assetType || 'Metric'}
           </div>
         </Stack>
       </div>
 
-      {item.description && (
-        <div className={styles.description} title={item.description}>
-          {item.description || "No description available"}
+      {(item.metadata?.root?.asset?.description || item.description) && (
+        <div className={styles.description} title={item.metadata?.root?.asset?.description || item.description}>
+          {item.metadata?.root?.asset?.description || item.description || "No description available"}
         </div>
       )}
 
@@ -191,17 +191,30 @@ export const MetricCard: React.FC<MetricCardProps> = ({
         <span className={styles.label}>Created:</span>
         <span className={styles.value}>
           <Icon iconName="Calendar" style={{ fontSize: 10, marginRight: 4 }} />
-          {formatDate(item.createdDate)}
+          {formatDate(item.metadata?.root?.asset?.createdDate || item.createdDate)}
           <span style={{ margin: '0 4px', color: theme.palette.neutralTertiary }}>•</span>
           <Icon iconName="Contact" style={{ fontSize: 10, marginRight: 4 }} />
-          {item.createdBy?.Name || 'Unknown'}
+          {item.metadata?.root?.asset?.createdBy?.Name || item.createdBy?.Name || 'Unknown'}
         </span>
       </div>
+
+      {item.metadata?.root?.asset?.lastModifiedDate && (
+        <div className={styles.detailsRow}>
+          <span className={styles.label}>Modified:</span>
+          <span className={styles.value}>
+            <Icon iconName="Calendar" style={{ fontSize: 10, marginRight: 4 }} />
+            {formatDate(item.metadata.root.asset.lastModifiedDate)}
+            <span style={{ margin: '0 4px', color: theme.palette.neutralTertiary }}>•</span>
+            <Icon iconName="Contact" style={{ fontSize: 10, marginRight: 4 }} />
+            {item.metadata.root.asset.lastModifiedBy?.Name || 'Unknown'}
+          </span>
+        </div>
+      )}
 
       <div className={styles.footerSection}>
         <span style={{ fontSize: 10 }}>
           <Icon iconName="ChartSeries" style={{ fontSize: 10, marginRight: 4 }} />
-          ID: {item.id?.substring(0, 10)}...
+          ID: {item.metadata?.root?.asset?.id || item.id?.substring(0, 10)}...
         </span>
         {item.metadata?.root?.asset?.name && (
           <span style={{ fontSize: 10 }}>
