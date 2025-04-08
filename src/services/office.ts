@@ -20,7 +20,10 @@ declare global {
         containerId: string,
         callback: (cmp: any) => void
       ) => void;
-    }
+      destroy: (component: any) => void;
+    };
+    Office: any;
+    Word: any;
   }
 }
 
@@ -128,7 +131,9 @@ export const OfficeService = {
           logging: true,
           useCORS: true,
           allowTaint: true,
-          background: '#ffffff'
+          background: '#ffffff',
+          width: lightningContainer.clientWidth,
+          height: lightningContainer.clientHeight
         });
         
         console.log('Lightning component captured as canvas');
@@ -147,8 +152,10 @@ export const OfficeService = {
           // Insert the image
           const image = range.insertInlinePictureFromBase64(imageData, 'Replace');
           
-          // Set image width (in points)
-          image.width = 500;
+          // Set image width to match the container width
+          const containerWidth = lightningContainer.clientWidth;
+          const scaleFactor = 0.75; // Reduce size slightly to fit better in document
+          image.width = containerWidth * scaleFactor;
           
           // Insert a paragraph break after the image
           range.insertParagraph('', 'After');
@@ -159,8 +166,7 @@ export const OfficeService = {
         console.log('Lightning component image inserted successfully');
       } catch (captureError) {
         console.error('Failed to capture Lightning component:', captureError);
-        console.warn('Falling back to full HTML preview');
-        await this.insertAsHtml(element);
+        throw captureError;
       }
     } catch (error) {
       console.error('Error inserting content:', error);
@@ -168,40 +174,17 @@ export const OfficeService = {
     }
   },
 
-  initializeLightningComponent(containerId: string, dashboardId: string, accessToken: string): Promise<void> {
-    console.log('Initializing Lightning component...', { containerId, dashboardId });
-    
+  initializeLightningComponent(containerId: string, dashboardId: string, accessToken: string): Promise<any> {
     return new Promise((resolve, reject) => {
-      try {
-        // Load Lightning Out script if not already loaded
-        if (!document.querySelector('script[src*="lightning.out.js"]')) {
-          const script = document.createElement('script');
-          // Add timestamp to prevent caching
-          script.src = `https://sdb42com6.test13.my.pc-rnd.salesforce.com/lightning/lightning.out.js?_=${Date.now()}`;
-          script.onload = () => {
-            this.createLightningComponent(containerId, dashboardId, accessToken, resolve, reject);
-          };
-          script.onerror = (error) => {
-            console.error('Failed to load Lightning Out script:', error);
-            reject(error);
-          };
-          document.head.appendChild(script);
-        } else {
-          this.createLightningComponent(containerId, dashboardId, accessToken, resolve, reject);
-        }
-      } catch (error) {
-        console.error('Error initializing Lightning Out:', error);
-        reject(error);
-      }
+      this.createLightningComponent(containerId, dashboardId, accessToken, resolve, reject);
     });
   },
 
-  // Helper method to create the Lightning component
   createLightningComponent(
     containerId: string, 
     dashboardId: string, 
     accessToken: string,
-    resolve: () => void,
+    resolve: (cmp: any) => void,
     reject: (error: Error) => void
   ): void {
     if (typeof window.$Lightning !== 'undefined') {
@@ -229,9 +212,7 @@ export const OfficeService = {
                 const container = document.getElementById(containerId);
                 if (container) {
                   container.setAttribute('data-lightning-ready', 'true');
-                  // Store the container ID for later use
-                  container.setAttribute('data-container-id', containerId);
-                  resolve();
+                  resolve(cmp);
                 }
               } else {
                 console.error("Failed to create Lightning component");
