@@ -24,25 +24,18 @@ declare global {
     }
     Office: {
       context: {
-        host: string;
-        mailbox?: {
-          item: {
-            body: {
-              setSelectedDataAsync: (
-                data: string,
-                options: { coercionType: string },
-                callback: (result: { status: string; error?: any }) => void
-              ) => void;
-            };
-          };
-        };
         document: {
           setSelectedDataAsync: (
             data: string,
             options: { coercionType: string },
             callback: (result: { status: string; error?: any }) => void
           ) => void;
+          getSelectedDataAsync: (
+            coercionType: string,
+            callback: (result: { status: string; value: any; error?: any }) => void
+          ) => void;
         };
+        host: string;
       };
       AsyncResultStatus: {
         Succeeded: string;
@@ -90,43 +83,43 @@ export const OfficeService = {
           break;
         case 'PowerPoint':
           try {
-            // For PowerPoint, we'll use PowerPoint.run() to insert images
-            return await PowerPoint.run(async (context) => {
-              let imageData;
+            // For PowerPoint, we'll use the document API to insert the image
+            let imageData;
               
-              if (content.capturedImage) {
-                // Get the base64 data without the data URL prefix
-                imageData = content.capturedImage.split(',')[1];
+            if (content.capturedImage) {
+              // Get the base64 data without the data URL prefix
+              imageData = content.capturedImage;
+            } else {
+              // Try to capture the content as an image
+              const element = document.querySelector('[id^="preview-lightning-"]');
+              if (element) {
+                const canvas = await html2canvas(element as HTMLElement, {
+                  logging: true,
+                  useCORS: true,
+                  allowTaint: true,
+                  background: '#ffffff'
+                });
+                imageData = canvas.toDataURL('image/png', 1.0);
               } else {
-                // Try to capture the content as an image
-                const element = document.querySelector('[id^="preview-lightning-"]');
-                if (element) {
-                  const canvas = await html2canvas(element as HTMLElement, {
-                    logging: true,
-                    useCORS: true,
-                    allowTaint: true,
-                    background: '#ffffff'
-                  });
-                  const imageDataUrl = canvas.toDataURL('image/png', 1.0);
-                  imageData = imageDataUrl.split(',')[1];
-                } else {
-                  throw new Error('No content to capture as image');
-                }
+                throw new Error('No content to capture as image');
               }
+            }
 
-              // Get the active slide and add the image
-              const slide = context.presentation.slides.getActiveSlide();
-              const shape = slide.shapes.addImage(imageData);
-              
-              // Set position and size
-              shape.left = 50;  // pixels from left
-              shape.top = 50;   // pixels from top
-              shape.width = 400; // width in pixels
-              shape.height = 300; // height in pixels
-
-              await context.sync();
-              console.log('Image inserted successfully in PowerPoint');
-              return true;
+            // Insert the image using the document API
+            return new Promise((resolve, reject) => {
+              Office.context.document.setSelectedDataAsync(
+                imageData,
+                { coercionType: Office.CoercionType.Image },
+                (result) => {
+                  if (result.status === Office.AsyncResultStatus.Succeeded) {
+                    console.log('Image inserted successfully in PowerPoint');
+                    resolve(true);
+                  } else {
+                    console.error('Failed to insert image in PowerPoint:', result.error);
+                    reject(result.error);
+                  }
+                }
+              );
             });
           } catch (error) {
             console.error('Failed to insert image in PowerPoint:', error);
@@ -145,8 +138,8 @@ export const OfficeService = {
       // Insert the formatted content into the document
       return new Promise((resolve, reject) => {
         if (this.isHostType('Outlook')) {
-          // For Outlook, we use the mailbox item API
-          Office.context.mailbox.item.body.setSelectedDataAsync(
+          // For Outlook, we use the document API instead of mailbox
+          Office.context.document.setSelectedDataAsync(
             formattedContent,
             { coercionType: Office.CoercionType.Html },
             (result: { status: string; error?: any }) => {
