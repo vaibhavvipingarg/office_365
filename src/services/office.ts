@@ -88,60 +88,52 @@ export const OfficeService = {
 
   async insertImageFromElement(element: HTMLElement): Promise<void> {
     try {
-      console.log('Starting image capture process...');
+      console.log('Inserting content as formatted HTML...');
       
-      // Capture the element as canvas
-      const canvas = await html2canvas(element, {
-        logging: true,
-        useCORS: true,
-        allowTaint: true,
-        background: '#ffffff'
-      });
+      // Get the computed styles of the element
+      const styles = window.getComputedStyle(element);
+      const backgroundColor = styles.backgroundColor || '#ffffff';
+      const textColor = styles.color || '#000000';
       
-      console.log('Canvas created successfully');
-      
-      // Convert to data URL
-      const imageDataUrl = canvas.toDataURL('image/png', 1.0);
-      console.log('Image data URL created');
-
-      // Create HTML with embedded image
+      // Create a styled HTML version of the content
       const htmlContent = `
-        <div style="max-width: 100%; margin: 0; padding: 0;">
-          <img src="${imageDataUrl}" style="width: 100%; max-width: 600px; height: auto; display: block;" alt="Dashboard Preview" />
+        <div style="
+          font-family: 'Segoe UI', sans-serif;
+          padding: 15px;
+          border: 1px solid #e1e1e1;
+          border-radius: 6px;
+          max-width: 600px;
+          background-color: ${backgroundColor};
+          color: ${textColor};
+          margin: 10px 0;
+        ">
+          ${element.innerHTML}
         </div>
       `;
 
       return new Promise((resolve, reject) => {
         try {
-          // Insert as HTML with embedded image
           Office.context.document.setSelectedDataAsync(
             htmlContent,
             { coercionType: Office.CoercionType.Html },
             (result) => {
               if (result.status === Office.AsyncResultStatus.Succeeded) {
-                console.log('HTML with embedded image inserted successfully');
+                console.log('HTML content inserted successfully');
                 resolve();
               } else {
-                console.warn('Failed to insert HTML with image, falling back to plain HTML:', result.error);
-                // If image insertion fails, fall back to plain HTML
-                this.insertAsHtml(element)
-                  .then(resolve)
-                  .catch(reject);
+                console.error('Failed to insert HTML content:', result.error);
+                reject(new Error('Failed to insert content'));
               }
             }
           );
         } catch (error) {
-          console.error('Error in HTML with image insertion:', error);
-          // Fall back to plain HTML
-          this.insertAsHtml(element)
-            .then(resolve)
-            .catch(reject);
+          console.error('Error in HTML insertion:', error);
+          reject(error);
         }
       });
     } catch (error) {
-      console.error('Error in image capture:', error);
-      // If image capture fails, fall back to plain HTML
-      return this.insertAsHtml(element);
+      console.error('Error preparing content:', error);
+      throw error;
     }
   },
 
