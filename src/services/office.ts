@@ -122,8 +122,25 @@ export const OfficeService = {
         return;
       }
 
+      // Get the stored Lightning content
+      const lightningContent = lightningContainer.getAttribute('data-lightning-content');
+      if (lightningContent) {
+        console.log('Using stored Lightning content for insertion');
+        // Create a wrapper div with styling
+        const wrappedContent = `
+          <div style="font-family: 'Segoe UI', sans-serif; margin: 10px 0;">
+            <div style="border: 1px solid #e1e1e1; border-radius: 6px; padding: 2px; background: white;">
+              ${lightningContent}
+            </div>
+          </div>
+        `;
+        await this.insertHtml(wrappedContent);
+        console.log('Lightning content inserted successfully');
+        return;
+      }
+
+      // Fallback to capturing as image if content not available
       try {
-        // Capture just the Lightning component div
         const canvas = await html2canvas(lightningContainer as HTMLElement, {
           logging: true,
           useCORS: true,
@@ -133,11 +150,9 @@ export const OfficeService = {
         
         console.log('Lightning component captured as canvas');
         
-        // Convert to data URL
         const imageDataUrl = canvas.toDataURL('image/png', 1.0);
         console.log('Canvas converted to data URL');
 
-        // Insert the image with some styling
         const htmlContent = `
           <div style="font-family: 'Segoe UI', sans-serif; margin: 10px 0;">
             <div style="border: 1px solid #e1e1e1; border-radius: 6px; padding: 2px; background: white;">
@@ -211,7 +226,6 @@ export const OfficeService = {
             {
               height: 300,
               idOrApiName: dashboardId,
-              // Add any additional parameters that might help with CORS
               allowTransparency: true,
               showHeader: false,
               showSharing: false
@@ -220,15 +234,17 @@ export const OfficeService = {
             (cmp: any) => {
               if (cmp) {
                 console.log("Lightning component created successfully");
-                // Give the component a moment to render its inner content
-                setTimeout(() => {
-                  const container = document.getElementById(containerId);
-                  if (container) {
-                    // Set a data attribute to indicate the component is ready
-                    container.setAttribute('data-lightning-ready', 'true');
-                  }
-                  resolve();
-                }, 1000);
+                // Store the component reference and mark as ready
+                const container = document.getElementById(containerId);
+                if (container) {
+                  container.setAttribute('data-lightning-ready', 'true');
+                  // Store the innerHTML after a brief delay to ensure content is rendered
+                  setTimeout(() => {
+                    const lightningContent = container.innerHTML;
+                    container.setAttribute('data-lightning-content', lightningContent);
+                    resolve();
+                  }, 1000);
+                }
               } else {
                 console.error("Failed to create Lightning component");
                 reject(new Error("Failed to create Lightning component"));
@@ -238,7 +254,6 @@ export const OfficeService = {
         },
         'https://sdb42com6.test13.lightning.pc-rnd.force.com',
         accessToken,
-        // Add additional Lightning Out configuration
         {
           allowedDomains: [targetOrigin],
           useAppHost: true
