@@ -250,6 +250,16 @@ export const OfficeService = {
     const isMetric = content && content.hasOwnProperty('id') && content.hasOwnProperty('label');
     
     if (isMetric) {
+      // If we have a captured image of the card, use that
+      if (content.capturedImage) {
+        return `
+          <div style="font-family: 'Segoe UI', sans-serif; max-width: 400px;">
+            <img src="${content.capturedImage}" alt="${content.label || 'Metric Card'}" style="width: 100%; height: auto;" />
+          </div>
+        `;
+      }
+
+      // Fallback to the old HTML format if no captured image
       return `
         <div style="font-family: 'Segoe UI', sans-serif; padding: 15px; border: 1px solid #e1e1e1; border-radius: 6px; max-width: 600px;">
           <div style="display: flex; align-items: center; margin-bottom: 12px;">

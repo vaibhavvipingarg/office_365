@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { 
   Stack, 
   Text, 
@@ -9,6 +9,7 @@ import {
   MessageBar,
   MessageBarType,
 } from '@fluentui/react';
+import html2canvas from 'html2canvas';
 
 interface MetricCardProps {
   item: any;
@@ -142,6 +143,8 @@ export const MetricCard: React.FC<MetricCardProps> = ({
   onSelect, 
   isSelected = false 
 }) => {
+  const cardRef = useRef<HTMLDivElement>(null);
+
   // Function to get an appropriate icon for the metric
   const getMetricIcon = () => {
     return 'BarChart4';
@@ -163,14 +166,45 @@ export const MetricCard: React.FC<MetricCardProps> = ({
     }
   };
 
-  const handleCardClick = () => {
-    if (onSelect) {
-      onSelect(item);
+  const handleCardClick = async () => {
+    if (onSelect && cardRef.current) {
+      try {
+        // Temporarily remove hover effects and transform for clean capture
+        cardRef.current.style.transform = 'none';
+        cardRef.current.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.1)';
+
+        const canvas = await html2canvas(cardRef.current, {
+          background: 'transparent',
+          logging: false,
+          useCORS: true,
+          allowTaint: true,
+          width: cardRef.current.scrollWidth * 2,
+          height: cardRef.current.scrollHeight * 2
+        });
+
+        // Restore hover effects
+        cardRef.current.style.transform = '';
+        cardRef.current.style.boxShadow = '';
+
+        // Convert canvas to base64 image
+        const imageData = canvas.toDataURL('image/png');
+        
+        // Add the captured image to the item before passing to onSelect
+        onSelect({
+          ...item,
+          capturedImage: imageData
+        });
+      } catch (error) {
+        console.error('Error capturing metric card:', error);
+        // If capture fails, just pass the original item
+        onSelect(item);
+      }
     }
   };
 
   return (
     <div 
+      ref={cardRef}
       className={`${styles.card} ${isSelected ? styles.selectedCard : ''}`} 
       onClick={handleCardClick}
       role="button"
