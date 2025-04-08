@@ -146,8 +146,30 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
         throw new Error('Preview element not found');
       }
 
-      // Insert the preview as an image
+      // First insert the preview as an image
       await OfficeService.insertImageFromElement(previewElement);
+
+      // Then insert the Lightning component
+      if (selectedItem.Id) { // Check if it's a dashboard
+        const accessToken = localStorage.getItem('sf_access_token');
+        if (!accessToken) {
+          throw new Error('Salesforce access token not found');
+        }
+
+        // Add some spacing between preview and component
+        await OfficeService.insertHtml('<p style="margin: 20px 0;"></p>');
+
+        // Insert the Lightning component
+        await OfficeService.insertLightningComponent(
+          'analytics_embedding:dashboard3p',
+          {
+            height: 300,
+            idOrApiName: selectedItem.Id
+          },
+          accessToken
+        );
+      }
+
       setShowPreview(false);
       setError(null);
     } catch (err) {

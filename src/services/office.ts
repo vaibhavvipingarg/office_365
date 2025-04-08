@@ -257,5 +257,75 @@ export const OfficeService = {
     } catch (e) {
       return dateString;
     }
+  },
+
+  async insertLightningComponent(componentName: string, componentAttributes: any, accessToken: string): Promise<void> {
+    try {
+      console.log('Starting Lightning component insertion...');
+      
+      // Create a container for the Lightning Out app with unique ID
+      const containerId = `lightning-container-${Date.now()}`;
+      
+      // Create HTML wrapper for Lightning Out
+      const htmlContent = `
+        <div style="
+          font-family: 'Segoe UI', sans-serif;
+          margin: 10px 0;
+          max-width: 100%;
+        ">
+          <div id="${containerId}" style="
+            border: 1px solid #e1e1e1;
+            border-radius: 6px;
+            padding: 15px;
+            background: white;
+            min-height: 100px;
+          "></div>
+        </div>
+        <script src="https://sdb42com6.test13.my.pc-rnd.salesforce.com/lightning/lightning.out.js"></script>
+        <script>
+          $Lightning.use(
+            "unifiedAnalytics:unifiedAnalyticsApp", // The Lightning app that hosts your component
+            function() {
+              $Lightning.createComponent(
+                "analytics_embedding:dashboard3p",
+                ${JSON.stringify({height:300, idOrApiName: '0TrUA00000006yH0AQ'})},
+                "${containerId}",
+                function(cmp) {
+                  console.log("Lightning component created");
+                },
+                "${accessToken}"
+              );
+            },
+            'https://sdb42com6.test13.my.pc-rnd.salesforce.com', // Your Salesforce org URL
+            "${accessToken}" // Access token
+          );
+        </script>
+      `;
+
+      return new Promise((resolve, reject) => {
+        try {
+          // Insert the HTML with Lightning Out
+          Office.context.document.setSelectedDataAsync(
+            htmlContent,
+            { coercionType: Office.CoercionType.Html },
+            (result) => {
+              if (result.status === Office.AsyncResultStatus.Succeeded) {
+                console.log('Lightning component container inserted successfully');
+                resolve();
+              } else {
+                console.error('Failed to insert Lightning component:', result.error);
+                reject(new Error('Failed to insert Lightning component'));
+              }
+            }
+          );
+        } catch (error) {
+          console.error('Error in Lightning component insertion:', error);
+          reject(error);
+        }
+      });
+    } catch (error) {
+      console.error('Error preparing Lightning component:', error);
+      throw error;
+    }
   }
 }; 
