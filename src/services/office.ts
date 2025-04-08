@@ -122,10 +122,10 @@ export const OfficeService = {
         return;
       }
 
-      // Get the stored Lightning content
-      const lightningContent = lightningContainer.getAttribute('data-lightning-content');
+      // Get the Lightning content at insertion time
+      const lightningContent = lightningContainer.innerHTML;
       if (lightningContent) {
-        console.log('Using stored Lightning content for insertion');
+        console.log('Capturing current Lightning content for insertion');
         // Create a wrapper div with styling
         const wrappedContent = `
           <div style="font-family: 'Segoe UI', sans-serif; margin: 10px 0;">
@@ -238,12 +238,9 @@ export const OfficeService = {
                 const container = document.getElementById(containerId);
                 if (container) {
                   container.setAttribute('data-lightning-ready', 'true');
-                  // Store the innerHTML after a brief delay to ensure content is rendered
-                  setTimeout(() => {
-                    const lightningContent = container.innerHTML;
-                    container.setAttribute('data-lightning-content', lightningContent);
-                    resolve();
-                  }, 1000);
+                  // Store the component reference
+                  container.setAttribute('data-lightning-cmp', JSON.stringify({ id: cmp.getGlobalId() }));
+                  resolve();
                 }
               } else {
                 console.error("Failed to create Lightning component");
