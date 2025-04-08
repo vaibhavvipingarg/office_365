@@ -8,7 +8,11 @@ declare global {
         appName: string,
         callback: () => void,
         orgUrl: string,
-        accessToken: string
+        accessToken: string,
+        config?: {
+          allowedDomains?: string[];
+          useAppHost?: boolean;
+        }
       ) => void;
       createComponent: (
         componentName: string,
@@ -156,7 +160,8 @@ export const OfficeService = {
         // Load Lightning Out script if not already loaded
         if (!document.querySelector('script[src*="lightning.out.js"]')) {
           const script = document.createElement('script');
-          script.src = 'https://sdb42com6.test13.my.pc-rnd.salesforce.com/lightning/lightning.out.js';
+          // Add timestamp to prevent caching
+          script.src = `https://sdb42com6.test13.my.pc-rnd.salesforce.com/lightning/lightning.out.js?_=${Date.now()}`;
           script.onload = () => {
             this.createLightningComponent(containerId, dashboardId, accessToken, resolve, reject);
           };
@@ -184,6 +189,9 @@ export const OfficeService = {
     reject: (error: Error) => void
   ): void {
     if (typeof window.$Lightning !== 'undefined') {
+      const targetOrigin = 'https://vaibhavvipingarg.github.io';
+      console.log('Creating Lightning component with origin:', targetOrigin);
+
       window.$Lightning.use(
         "unifiedAnalytics:unifiedAnalyticsApp",
         () => {
@@ -192,7 +200,11 @@ export const OfficeService = {
             "analytics_embedding:dashboard3p",
             {
               height: 300,
-              idOrApiName: dashboardId
+              idOrApiName: dashboardId,
+              // Add any additional parameters that might help with CORS
+              allowTransparency: true,
+              showHeader: false,
+              showSharing: false
             },
             containerId,
             (cmp: any) => {
@@ -208,7 +220,12 @@ export const OfficeService = {
           );
         },
         'https://sdb42com6.test13.my.pc-rnd.salesforce.com',
-        accessToken
+        accessToken,
+        // Add additional Lightning Out configuration
+        {
+          allowedDomains: [targetOrigin],
+          useAppHost: true
+        }
       );
     } else {
       console.error('Lightning Out not available');
