@@ -175,7 +175,7 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
     
     useEffect(() => {
       let mounted = true;
-      let cleanupTimeout: NodeJS.Timeout;
+      const cleanupTimeout: NodeJS.Timeout | null = null;
       
       // Only initialize Lightning component for dashboards
       if (!item.hasOwnProperty('id') && item.DeveloperName) {
@@ -196,74 +196,181 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
         }
       }
       
-      // Cleanup function
       return () => {
         mounted = false;
+        if (cleanupTimeout) clearTimeout(cleanupTimeout);
         
-        // Delay the cleanup slightly to ensure proper unmounting
-        cleanupTimeout = setTimeout(() => {
-          try {
-            const container = document.getElementById(containerId);
-            if (container) {
-              // Remove the container entirely instead of just its contents
-              container.remove();
-            }
-          } catch (error) {
-            console.warn('Error during Lightning component cleanup:', error);
+        // Cleanup Lightning component
+        try {
+          const container = document.getElementById(containerId);
+          if (container) {
+            container.remove();
           }
-        }, 100);
+        } catch (error) {
+          console.warn('Error during Lightning component cleanup:', error);
+        }
       };
     }, [item.DeveloperName, containerId]);
-    
-    const getDashboardIcon = () => {
-      return 'ViewDashboard';
-    };
-    
-    const getMetricIcon = () => {
-      return 'BarChart4';
-    };
     
     const formatDate = (dateString: string) => {
       if (!dateString) return 'Unknown';
       return new Date(dateString).toLocaleDateString('en-US', {
-        year: 'numeric',
+        year: '2-digit',
         month: 'short',
         day: 'numeric'
       });
     };
     
-    // Determine if this is a dashboard or metric
-    const isMetric = item.hasOwnProperty('id') && item.hasOwnProperty('label');
+    // Determine if this is a metric or dashboard
+    const isMetric = item.hasOwnProperty('id') && item.hasOwnProperty('metadata');
 
-    return (
-      <div ref={previewRef} className="preview-card" style={{ padding: '20px', maxWidth: '600px' }}>
-        <Stack tokens={{ childrenGap: 20 }}>
-          <Text variant="xLarge">{item.metadata?.label || item.title}</Text>
-          <Text variant="large">{item.value}</Text>
-          {item.metadata?.insightBox && (
-            <div className="insight-box" style={{ padding: '10px', backgroundColor: '#f3f3f3', borderRadius: '4px' }}>
-              <Text>{item.metadata.insightBox}</Text>
-            </div>
-          )}
-          {item.metadata?.previewImage && (
-            <img 
-              src={`data:image/png;base64,${item.metadata.previewImage}`} 
-              alt="Metric Preview" 
-              style={{ maxWidth: '100%', height: 'auto' }}
-            />
-          )}
-          <Stack horizontal tokens={{ childrenGap: 10 }}>
-            <Text>Time Range: Last 30 days</Text>
-            {item.metadata?.createdDate && (
-              <Text>Created: {new Date(item.metadata.createdDate).toLocaleDateString()}</Text>
+    if (isMetric) {
+      // Metric Preview
+      return (
+        <div ref={previewRef} className="preview-card" style={{ padding: '20px', maxWidth: '600px' }}>
+          <Stack tokens={{ childrenGap: 16 }}>
+            <Text variant="xLarge" styles={{ root: { fontWeight: 600 } }}>
+              {item.metadata?.asset?.label || item.label}
+            </Text>
+            
+            {item.metadata?.asset?.metricValue && (
+              <Text variant="large" styles={{ root: { color: theme.palette.themePrimary } }}>
+                {item.metadata.asset.metricValue}
+              </Text>
             )}
-            {item.metadata?.lastModifiedDate && (
-              <Text>Last Modified: {new Date(item.metadata.lastModifiedDate).toLocaleDateString()}</Text>
+
+            {item.metadata?.asset?.metricInsight && (
+              <div style={{ 
+                padding: '12px', 
+                backgroundColor: theme.palette.neutralLighter,
+                borderRadius: '4px'
+              }}>
+                <Text>
+                  <Icon iconName="Lightbulb" style={{ marginRight: 8, color: theme.palette.themePrimary }} />
+                  {item.metadata.asset.metricInsight}
+                </Text>
+              </div>
             )}
+
+            {item.metadata?.downloadFile?.base64EncodedData && (
+              <div style={{ 
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                maxHeight: 200,
+                overflow: 'hidden',
+                backgroundColor: theme.palette.neutralLighterAlt,
+                borderRadius: 4,
+                border: `1px solid ${theme.palette.neutralLight}`
+              }}>
+                <img 
+                  src={`data:${item.metadata.downloadFile.fileType || 'image/png'};base64,${item.metadata.downloadFile.base64EncodedData}`}
+                  alt="Metric Preview"
+                  style={{
+                    maxWidth: 200,
+                    maxHeight: 200,
+                    width: 'auto',
+                    height: 'auto',
+                    objectFit: 'contain'
+                  }}
+                />
+              </div>
+            )}
+
+            <Stack tokens={{ childrenGap: 8 }}>
+              {item.metadata?.asset?.metricFilterSummary && (
+                <Stack horizontal horizontalAlign="space-between">
+                  <Text variant="small">Time Range:</Text>
+                  <Text variant="small">
+                    <Icon iconName="Calendar" style={{ marginRight: 4 }} />
+                    {item.metadata.asset.metricFilterSummary}
+                  </Text>
+                </Stack>
+              )}
+
+              <Stack horizontal horizontalAlign="space-between">
+                <Text variant="small">Created:</Text>
+                <Text variant="small">
+                  {formatDate(item.metadata?.asset?.createdDate)}
+                  <span style={{ margin: '0 4px' }}>•</span>
+                  {item.metadata?.asset?.createdBy?.name || 'Unknown'}
+                </Text>
+              </Stack>
+
+              {item.metadata?.asset?.lastModifiedDate && (
+                <Stack horizontal horizontalAlign="space-between">
+                  <Text variant="small">Modified:</Text>
+                  <Text variant="small">
+                    {formatDate(item.metadata.asset.lastModifiedDate)}
+                    <span style={{ margin: '0 4px' }}>•</span>
+                    {item.metadata.asset.lastModifiedBy?.name || 'Unknown'}
+                  </Text>
+                </Stack>
+              )}
+            </Stack>
+
+            <Text variant="small" style={{ color: theme.palette.neutralSecondary }}>
+              Metric ID: {item.metadata?.asset?.id || item.id}
+            </Text>
           </Stack>
-        </Stack>
-      </div>
-    );
+        </div>
+      );
+    } else {
+      // Dashboard Preview
+      return (
+        <div ref={previewRef} className="preview-card" style={{ padding: '20px' }}>
+          <Stack tokens={{ childrenGap: 16 }}>
+            <Stack horizontal horizontalAlign="space-between" verticalAlign="center">
+              <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 8 }}>
+                <Icon iconName="ViewDashboard" style={{ fontSize: 20, color: theme.palette.themePrimary }} />
+                <Text variant="large" styles={{ root: { fontWeight: 600 } }}>
+                  {item.MasterLabel || item.Name || 'Unknown Dashboard'}
+                </Text>
+              </Stack>
+              <Text variant="small" style={{ color: theme.palette.neutralSecondary }}>
+                {item.AnalyticsWorkspace ? item.AnalyticsWorkspace.MasterLabel : 'Dashboard'}
+              </Text>
+            </Stack>
+
+            {/* Lightning Component Container */}
+            <div style={{ 
+              minHeight: 300, 
+              border: `1px solid ${theme.palette.neutralLight}`,
+              borderRadius: 4,
+              padding: 8,
+              backgroundColor: theme.palette.white,
+              position: 'relative'
+            }}>
+              <div id={containerId}>
+                {!isLightningLoaded && (
+                  <Stack 
+                    horizontalAlign="center" 
+                    verticalAlign="center" 
+                    styles={{ root: { height: 300 } }}
+                  >
+                    <Spinner size={SpinnerSize.large} label="Loading dashboard..." />
+                  </Stack>
+                )}
+              </div>
+            </div>
+
+            <Stack 
+              styles={{
+                root: {
+                  borderTop: `1px solid ${theme.palette.neutralLight}`,
+                  paddingTop: 12,
+                  marginTop: 12
+                }
+              }}
+            >
+              <Text variant="small" style={{ color: theme.palette.neutralSecondary }}>
+                Dashboard ID: {item.Id || 'Unknown'}
+              </Text>
+            </Stack>
+          </Stack>
+        </div>
+      );
+    }
   };
 
   return (
