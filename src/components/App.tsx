@@ -159,10 +159,17 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
         }
       }
 
-      // Capture and insert the preview (which now includes the Lightning component if it's a dashboard)
+      // Capture and insert the preview
       await OfficeService.insertImageFromElement(previewElement);
 
+      // Close the preview dialog first
       setShowPreview(false);
+      
+      // Clear selection after a short delay to ensure proper cleanup
+      setTimeout(() => {
+        setSelectedItem(null);
+      }, 100);
+
       setError(null);
     } catch (err) {
       console.error('Error inserting content:', err);
@@ -176,11 +183,11 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
   const PreviewCard = ({ item }: { item: any }) => {
     const theme = getTheme();
     const [isLightningLoaded, setIsLightningLoaded] = useState(false);
-    // Use DeveloperName for the container ID
     const containerId = `preview-lightning-${item.DeveloperName || item.id || 'unknown'}`;
     
     useEffect(() => {
       let mounted = true;
+      let cleanupTimeout: NodeJS.Timeout;
       
       // Only initialize Lightning component for dashboards
       if (!item.hasOwnProperty('id') && item.DeveloperName) {
@@ -204,20 +211,21 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
       // Cleanup function
       return () => {
         mounted = false;
-        // Safely cleanup the Lightning component if it exists
-        try {
-          const container = document.getElementById(containerId);
-          if (container) {
-            // Instead of clearing innerHTML, just remove the container's content
-            while (container.firstChild) {
-              container.removeChild(container.firstChild);
+        
+        // Delay the cleanup slightly to ensure proper unmounting
+        cleanupTimeout = setTimeout(() => {
+          try {
+            const container = document.getElementById(containerId);
+            if (container) {
+              // Remove the container entirely instead of just its contents
+              container.remove();
             }
+          } catch (error) {
+            console.warn('Error during Lightning component cleanup:', error);
           }
-        } catch (error) {
-          console.warn('Error during Lightning component cleanup:', error);
-        }
+        }, 100);
       };
-    }, [item.DeveloperName, containerId]); // Only depend on the DeveloperName, not the entire item
+    }, [item.DeveloperName, containerId]);
     
     const getDashboardIcon = () => {
       return 'ViewDashboard';
