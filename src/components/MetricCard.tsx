@@ -163,8 +163,8 @@ export const MetricCard: React.FC<MetricCardProps> = ({
       )}
       <div className={styles.header}>
         <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 4 }}>
-          <Text className={styles.title} title={item.metadata?.root?.asset?.label || item.label || item.name}>
-            {item.metadata?.root?.asset?.label || item.label || item.name}
+          <Text className={styles.title} title={item.metadata?.asset?.label || item.label || item.name}>
+            {item.metadata?.asset?.label || item.label || item.name}
           </Text>
           <div className={styles.type} title={item.assetType || 'Metric'}>
             <Icon iconName="Chart" className={styles.icon} />
@@ -174,28 +174,28 @@ export const MetricCard: React.FC<MetricCardProps> = ({
       </div>
 
       {/* Metric Value and Change */}
-      {(item.metadata?.root?.asset?.metricValue || item.metadata?.root?.asset?.metricChange) && (
+      {(item.metadata?.asset?.metricValue || item.metadata?.asset?.metricChange) && (
         <Stack horizontal horizontalAlign="space-between" styles={{ root: { marginBottom: 8 } }}>
-          {item.metadata?.root?.asset?.metricValue && (
+          {item.metadata?.asset?.metricValue && (
             <Text variant="large" styles={{ root: { fontWeight: 600, color: theme.palette.themePrimary } }}>
-              {item.metadata.root.asset.metricValue}
+              {item.metadata.asset.metricValue}
             </Text>
           )}
-          {item.metadata?.root?.asset?.metricChange && (
+          {item.metadata?.asset?.metricChange && (
             <Text styles={{ 
               root: { 
-                color: item.metadata.root.asset.metricSentiment === 'negative' ? '#D13438' : '#107C10',
+                color: item.metadata.asset.metricSentiment === 'negative' ? '#D13438' : '#107C10',
                 fontWeight: 500
               }
             }}>
-              {item.metadata.root.asset.metricChange}
+              {item.metadata.asset.metricChange}
             </Text>
           )}
         </Stack>
       )}
 
       {/* Metric Insight */}
-      {item.metadata?.root?.asset?.metricInsight && (
+      {item.metadata?.asset?.metricInsight && (
         <div style={{ 
           backgroundColor: theme.palette.neutralLighter,
           padding: '8px',
@@ -204,15 +204,15 @@ export const MetricCard: React.FC<MetricCardProps> = ({
           fontSize: '12px'
         }}>
           <Icon iconName="Lightbulb" style={{ marginRight: '4px', color: theme.palette.themePrimary }} />
-          {item.metadata.root.asset.metricInsight}
+          {item.metadata.asset.metricInsight}
         </div>
       )}
 
       {/* Preview Image from base64 data */}
-      {item.metadata?.root?.downloadFile?.base64EncodedData && (
+      {item.metadata?.downloadFile?.base64EncodedData && (
         <div style={{ marginBottom: '8px' }}>
           <img 
-            src={`data:${item.metadata.root.downloadFile.fileType || 'image/png'};base64,${item.metadata.root.downloadFile.base64EncodedData}`}
+            src={`data:${item.metadata.downloadFile.fileType || 'image/png'};base64,${item.metadata.downloadFile.base64EncodedData}`}
             alt="Metric Preview"
             style={{ 
               width: '100%',
@@ -223,12 +223,12 @@ export const MetricCard: React.FC<MetricCardProps> = ({
         </div>
       )}
 
-      {item.metadata?.root?.asset?.metricFilterSummary && (
+      {item.metadata?.asset?.metricFilterSummary && (
         <div className={styles.detailsRow}>
           <span className={styles.label}>Time Range:</span>
           <span className={styles.value}>
             <Icon iconName="Calendar" style={{ fontSize: 10, marginRight: 4 }} />
-            {item.metadata.root.asset.metricFilterSummary}
+            {item.metadata.asset.metricFilterSummary}
           </span>
         </div>
       )}
@@ -237,22 +237,22 @@ export const MetricCard: React.FC<MetricCardProps> = ({
         <span className={styles.label}>Created:</span>
         <span className={styles.value}>
           <Icon iconName="Calendar" style={{ fontSize: 10, marginRight: 4 }} />
-          {formatDate(item.metadata?.root?.asset?.createdDate || item.createdDate)}
+          {formatDate(item.metadata?.asset?.createdDate || item.createdDate)}
           <span style={{ margin: '0 4px', color: theme.palette.neutralTertiary }}>•</span>
           <Icon iconName="Contact" style={{ fontSize: 10, marginRight: 4 }} />
-          {item.metadata?.root?.asset?.createdBy?.name || item.createdBy?.Name || 'Unknown'}
+          {item.metadata?.asset?.createdBy?.name || item.createdBy?.Name || 'Unknown'}
         </span>
       </div>
 
-      {item.metadata?.root?.asset?.lastModifiedDate && (
+      {item.metadata?.asset?.lastModifiedDate && (
         <div className={styles.detailsRow}>
           <span className={styles.label}>Modified:</span>
           <span className={styles.value}>
             <Icon iconName="Calendar" style={{ fontSize: 10, marginRight: 4 }} />
-            {formatDate(item.metadata.root.asset.lastModifiedDate)}
+            {formatDate(item.metadata.asset.lastModifiedDate)}
             <span style={{ margin: '0 4px', color: theme.palette.neutralTertiary }}>•</span>
             <Icon iconName="Contact" style={{ fontSize: 10, marginRight: 4 }} />
-            {item.metadata.root.asset.lastModifiedBy?.name || 'Unknown'}
+            {item.metadata.asset.lastModifiedBy?.name || 'Unknown'}
           </span>
         </div>
       )}
@@ -270,12 +270,12 @@ export const MetricCard: React.FC<MetricCardProps> = ({
       <div className={styles.footerSection}>
         <span style={{ fontSize: 10 }}>
           <Icon iconName="ChartSeries" style={{ fontSize: 10, marginRight: 4 }} />
-          ID: {item.metadata?.root?.asset?.id?.substring(0, 10) || item.id?.substring(0, 10)}...
+          ID: {item.metadata?.asset?.id?.substring(0, 10) || item.id?.substring(0, 10)}...
         </span>
-        {item.metadata?.root?.asset?.name && (
+        {item.metadata?.asset?.name && (
           <span style={{ fontSize: 10 }}>
             <Icon iconName="Tag" style={{ fontSize: 10, marginRight: 4 }} />
-            {item.metadata.root.asset.name.split('_')[0]}
+            {item.metadata.asset.name.split('_')[0]}
           </span>
         )}
       </div>

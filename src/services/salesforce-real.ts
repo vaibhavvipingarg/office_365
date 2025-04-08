@@ -479,18 +479,18 @@ export class SalesforceAuth {
               return {
                 id: metric.id,
                 name: metric.name,
-                label: metric.label || metadata.root?.asset?.label,
+                label: metric.label || metadata.asset?.label,
                 hasError: false,
                 metadata: metadata,
-                metricValue: metadata.root?.asset?.metricValue,
-                metricChange: metadata.root?.asset?.metricChange,
-                metricSentiment: metadata.root?.asset?.metricSentiment,
-                metricInsight: metadata.root?.asset?.metricInsight,
-                metricFilterSummary: metadata.root?.asset?.metricFilterSummary,
-                createdDate: metadata.root?.asset?.createdDate,
-                lastModifiedDate: metadata.root?.asset?.lastModifiedDate,
-                createdBy: metadata.root?.asset?.createdBy,
-                lastModifiedBy: metadata.root?.asset?.lastModifiedBy
+                metricValue: metadata.asset?.metricValue,
+                metricChange: metadata.asset?.metricChange,
+                metricSentiment: metadata.asset?.metricSentiment,
+                metricInsight: metadata.asset?.metricInsight,
+                metricFilterSummary: metadata.asset?.metricFilterSummary,
+                createdDate: metadata.asset?.createdDate,
+                lastModifiedDate: metadata.asset?.lastModifiedDate,
+                createdBy: metadata.asset?.createdBy,
+                lastModifiedBy: metadata.asset?.lastModifiedBy
               };
             } catch (error) {
               console.warn(`Failed to fetch metadata for metric ${metric.id}:`, error);
