@@ -234,7 +234,7 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
   const PreviewCard = ({ item }: { item: any }) => {
     const theme = getTheme();
     const [isLightningLoaded, setIsLightningLoaded] = useState(false);
-    const containerId = `preview-lightning-${item.DeveloperName || item.id || 'unknown'}`;
+    const containerId = `preview-lightning-${item.Id || item.DeveloperName || 'unknown'}`;
     const previewRef = useRef<HTMLDivElement>(null);
     
     useEffect(() => {
@@ -243,14 +243,17 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
       
       const accessToken = localStorage.getItem('sf_access_token');
       if (accessToken) {
-        // Initialize Lightning component for both metrics and dashboards
-        if (item.hasOwnProperty('id')) {
+        // Initialize Lightning component based on item type
+        if (item.Id?.startsWith('1HU')) {
           // For metrics
           OfficeService.initializeLightningComponent(
             containerId, 
-            'analytics_embedding:dashboard3p', 
+            'analytics_embedding:metric3p', 
             accessToken,
-            { isSubmetric: true }
+            { 
+              isSubmetric: true,
+              idOrDevName: item.Id
+            }
           )
           .then(() => {
             if (mounted) {
@@ -265,18 +268,25 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
           });
         } else if (item.DeveloperName) {
           // For dashboards
-          OfficeService.initializeLightningComponent(containerId, item.DeveloperName, accessToken)
-            .then(() => {
-              if (mounted) {
-                setIsLightningLoaded(true);
-              }
-            })
-            .catch(error => {
-              console.error('Error initializing Lightning component:', error);
-              if (mounted) {
-                setIsLightningLoaded(false);
-              }
-            });
+          OfficeService.initializeLightningComponent(
+            containerId, 
+            'analytics_embedding:dashboard3p', 
+            accessToken,
+            {
+              idOrDevName: item.DeveloperName
+            }
+          )
+          .then(() => {
+            if (mounted) {
+              setIsLightningLoaded(true);
+            }
+          })
+          .catch(error => {
+            console.error('Error initializing Lightning component for dashboard:', error);
+            if (mounted) {
+              setIsLightningLoaded(false);
+            }
+          });
         }
       }
       
@@ -294,7 +304,7 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
           console.warn('Error during Lightning component cleanup:', error);
         }
       };
-    }, [item.DeveloperName, item.id, containerId]);
+    }, [item.DeveloperName, item.Id, containerId]);
     
     const formatDate = (dateString: string) => {
       if (!dateString) return 'Unknown';
@@ -306,7 +316,7 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
     };
     
     // Determine if this is a metric or dashboard
-    const isMetric = item.hasOwnProperty('id') && item.hasOwnProperty('metadata');
+    const isMetric = item.Id?.startsWith('1HU');
 
     if (isMetric) {
       // Metric Preview
