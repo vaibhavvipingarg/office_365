@@ -88,51 +88,81 @@ export const OfficeService = {
 
   async insertImageFromElement(element: HTMLElement): Promise<void> {
     try {
-      console.log('Inserting content as formatted HTML...');
+      console.log('Starting preview capture process...');
       
-      // Get the computed styles of the element
-      const styles = window.getComputedStyle(element);
-      const backgroundColor = styles.backgroundColor || '#ffffff';
-      const textColor = styles.color || '#000000';
+      // First capture the preview as an image
+      const canvas = await html2canvas(element, {
+        logging: true,
+        useCORS: true,
+        allowTaint: true,
+        background: '#ffffff',
+        width: element.offsetWidth,
+        height: element.offsetHeight
+      });
       
-      // Create a styled HTML version of the content
+      console.log('Preview captured as canvas');
+      
+      // Convert to data URL with high quality
+      const imageDataUrl = canvas.toDataURL('image/png', 1.0);
+      console.log('Canvas converted to data URL');
+
+      // Create HTML with embedded image and styling
       const htmlContent = `
         <div style="
           font-family: 'Segoe UI', sans-serif;
-          padding: 15px;
-          border: 1px solid #e1e1e1;
-          border-radius: 6px;
-          max-width: 600px;
-          background-color: ${backgroundColor};
-          color: ${textColor};
           margin: 10px 0;
+          max-width: 100%;
         ">
-          ${element.innerHTML}
+          <p style="
+            color: #666;
+            font-size: 11px;
+            margin: 0 0 8px 0;
+          ">Dashboard Preview:</p>
+          <div style="
+            border: 1px solid #e1e1e1;
+            border-radius: 6px;
+            padding: 2px;
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+          ">
+            <img 
+              src="${imageDataUrl}" 
+              alt="Dashboard Preview" 
+              style="
+                display: block;
+                width: 100%;
+                max-width: 600px;
+                height: auto;
+                border-radius: 4px;
+              "
+            />
+          </div>
         </div>
       `;
 
       return new Promise((resolve, reject) => {
         try {
+          // Insert the HTML with embedded image
           Office.context.document.setSelectedDataAsync(
             htmlContent,
             { coercionType: Office.CoercionType.Html },
             (result) => {
               if (result.status === Office.AsyncResultStatus.Succeeded) {
-                console.log('HTML content inserted successfully');
+                console.log('Preview inserted successfully');
                 resolve();
               } else {
-                console.error('Failed to insert HTML content:', result.error);
-                reject(new Error('Failed to insert content'));
+                console.error('Failed to insert preview:', result.error);
+                reject(new Error('Failed to insert preview'));
               }
             }
           );
         } catch (error) {
-          console.error('Error in HTML insertion:', error);
+          console.error('Error in preview insertion:', error);
           reject(error);
         }
       });
     } catch (error) {
-      console.error('Error preparing content:', error);
+      console.error('Error capturing preview:', error);
       throw error;
     }
   },
