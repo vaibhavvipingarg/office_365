@@ -221,7 +221,7 @@ export const OfficeService = {
 
       // Initialize Lightning Out
       await (window as any).$Lightning.use(
-        "lightning:tableauCRM",
+        "tableau_einstein:tableauEinsteinApp",
         () => {
           // Create the component
           (window as any).$Lightning.createComponent(
