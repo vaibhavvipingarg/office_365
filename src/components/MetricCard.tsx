@@ -6,6 +6,8 @@ import {
   Icon, 
   mergeStyleSets, 
   getTheme,
+  MessageBar,
+  MessageBarType,
 } from '@fluentui/react';
 
 interface MetricCardProps {
@@ -171,9 +173,53 @@ export const MetricCard: React.FC<MetricCardProps> = ({
         </Stack>
       </div>
 
-      {(item.metadata?.root?.asset?.description || item.description) && (
-        <div className={styles.description} title={item.metadata?.root?.asset?.description || item.description}>
-          {item.metadata?.root?.asset?.description || item.description || "No description available"}
+      {/* Metric Value and Change */}
+      {(item.metadata?.root?.asset?.metricValue || item.metadata?.root?.asset?.metricChange) && (
+        <Stack horizontal horizontalAlign="space-between" styles={{ root: { marginBottom: 8 } }}>
+          {item.metadata?.root?.asset?.metricValue && (
+            <Text variant="large" styles={{ root: { fontWeight: 600, color: theme.palette.themePrimary } }}>
+              {item.metadata.root.asset.metricValue}
+            </Text>
+          )}
+          {item.metadata?.root?.asset?.metricChange && (
+            <Text styles={{ 
+              root: { 
+                color: item.metadata.root.asset.metricSentiment === 'negative' ? '#D13438' : '#107C10',
+                fontWeight: 500
+              }
+            }}>
+              {item.metadata.root.asset.metricChange}
+            </Text>
+          )}
+        </Stack>
+      )}
+
+      {/* Metric Insight */}
+      {item.metadata?.root?.asset?.metricInsight && (
+        <div style={{ 
+          backgroundColor: theme.palette.neutralLighter,
+          padding: '8px',
+          borderRadius: '4px',
+          marginBottom: '8px',
+          fontSize: '12px'
+        }}>
+          <Icon iconName="Lightbulb" style={{ marginRight: '4px', color: theme.palette.themePrimary }} />
+          {item.metadata.root.asset.metricInsight}
+        </div>
+      )}
+
+      {/* Preview Image from base64 data */}
+      {item.metadata?.root?.downloadFile?.base64EncodedData && (
+        <div style={{ marginBottom: '8px' }}>
+          <img 
+            src={`data:${item.metadata.root.downloadFile.fileType || 'image/png'};base64,${item.metadata.root.downloadFile.base64EncodedData}`}
+            alt="Metric Preview"
+            style={{ 
+              width: '100%',
+              borderRadius: '4px',
+              border: `1px solid ${theme.palette.neutralLight}`
+            }}
+          />
         </div>
       )}
 
@@ -194,7 +240,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
           {formatDate(item.metadata?.root?.asset?.createdDate || item.createdDate)}
           <span style={{ margin: '0 4px', color: theme.palette.neutralTertiary }}>•</span>
           <Icon iconName="Contact" style={{ fontSize: 10, marginRight: 4 }} />
-          {item.metadata?.root?.asset?.createdBy?.Name || item.createdBy?.Name || 'Unknown'}
+          {item.metadata?.root?.asset?.createdBy?.name || item.createdBy?.Name || 'Unknown'}
         </span>
       </div>
 
@@ -206,9 +252,19 @@ export const MetricCard: React.FC<MetricCardProps> = ({
             {formatDate(item.metadata.root.asset.lastModifiedDate)}
             <span style={{ margin: '0 4px', color: theme.palette.neutralTertiary }}>•</span>
             <Icon iconName="Contact" style={{ fontSize: 10, marginRight: 4 }} />
-            {item.metadata.root.asset.lastModifiedBy?.Name || 'Unknown'}
+            {item.metadata.root.asset.lastModifiedBy?.name || 'Unknown'}
           </span>
         </div>
+      )}
+
+      {/* Error State */}
+      {item.hasError && (
+        <MessageBar
+          messageBarType={MessageBarType.error}
+          styles={{ root: { marginTop: 8 } }}
+        >
+          {item.errorMessage}
+        </MessageBar>
       )}
 
       <div className={styles.footerSection}>
