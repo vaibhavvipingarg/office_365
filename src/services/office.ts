@@ -464,7 +464,7 @@ export const OfficeService = {
   // Helper method to create the Lightning component
   createLightningComponent(
     containerId: string, 
-    dashboardId: string, 
+    idOrName: string, 
     accessToken: string,
     resolve: () => void,
     reject: (error: Error) => void
@@ -534,12 +534,12 @@ export const OfficeService = {
         () => {
           console.log('Lightning app initialized, creating component...');
           
-          // Check if this is a metric or dashboard based on the ID format
-          const isMetric = /^1HU/.test(dashboardId);
+          // Determine if this is a metric based on the ID format
+          const isMetric = /^0Fc/.test(idOrName);
           const componentName = isMetric ? "analytics_embedding:metric3p" : "analytics_embedding:dashboard3p";
           const componentAttributes = {
             height: 300,
-            idOrApiName: dashboardId,
+            idOrApiName: idOrName,
             allowTransparency: true,
             showHeader: false,
             showSharing: false,

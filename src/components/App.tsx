@@ -143,89 +143,65 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
         throw new Error('Preview element not found');
       }
 
-      // Handle differently based on type
-      if (!selectedItem.hasOwnProperty('id')) {
-        // This is a dashboard
-        console.log('Preparing to capture dashboard visualization...');
-        
-        const containerId = `preview-lightning-${selectedItem.DeveloperName || 'unknown'}`;
-        const lightningContainer = document.getElementById(containerId);
-        if (!lightningContainer) {
-          throw new Error('Lightning container not found');
-        }
-
-        let attempts = 0;
-        const maxAttempts = 30; // 30 seconds max wait time
-        let dashboardContainer = null;
-        
-        // Wait for dashboard container within the Lightning container
-        while (attempts < maxAttempts) {
-          dashboardContainer = lightningContainer.querySelector('.tua-dashboard-container');
-          if (dashboardContainer) {
-            console.log('Dashboard container found within Lightning Out, preparing to capture...');
-            break;
-          }
-          console.log(`Waiting for dashboard to load (attempt ${attempts + 1}/${maxAttempts})...`);
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          attempts++;
-        }
-
-        if (!dashboardContainer) {
-          console.error('Timed out waiting for dashboard to load');
-          throw new Error('Dashboard failed to load');
-        }
-
-        // Give a small delay for final render
-        await new Promise(resolve => setTimeout(resolve, 500));
-        console.log('Capturing dashboard...');
-
-        // Capture just the dashboard container
-        const canvas = await html2canvas(dashboardContainer as HTMLElement, {
-          background: 'white',
-          logging: false,
-          useCORS: true,
-          allowTaint: true
-        });
-
-        console.log('Dashboard captured successfully');
-
-        const imageData = {
-          ...selectedItem,
-          capturedImage: canvas.toDataURL('image/png')
-        };
-
-        await OfficeService.insertContent(imageData);
-        console.log('Dashboard inserted into document');
-      } else {
-        // This is a metric - keep existing behavior
-        const canvas = await html2canvas(previewElement, {
-          background: 'white',
-          width: previewElement.offsetWidth,
-          height: previewElement.offsetHeight,
-          logging: false,
-          useCORS: true,
-          allowTaint: true
-        });
-
-        const imageData = {
-          ...selectedItem,
-          capturedImage: canvas.toDataURL('image/png')
-        };
-
-        await OfficeService.insertContent(imageData);
+      // Both metrics and dashboards now use Lightning Out
+      console.log('Preparing to capture visualization...');
+      
+      const containerId = `preview-lightning-${selectedItem.DeveloperName || selectedItem.id || 'unknown'}`;
+      const lightningContainer = document.getElementById(containerId);
+      if (!lightningContainer) {
+        throw new Error('Lightning container not found');
       }
+
+      let attempts = 0;
+      const maxAttempts = 30; // 30 seconds max wait time
+      let visualContainer = null;
+      
+      // Wait for container within the Lightning container
+      while (attempts < maxAttempts) {
+        // For dashboards, look for dashboard container. For metrics, look for metric container
+        visualContainer = selectedItem.hasOwnProperty('id') 
+          ? lightningContainer.querySelector('.metric-container') 
+          : lightningContainer.querySelector('.tua-dashboard-container');
+          
+        if (visualContainer) {
+          console.log('Visual container found within Lightning Out, preparing to capture...');
+          break;
+        }
+        console.log(`Waiting for content to load (attempt ${attempts + 1}/${maxAttempts})...`);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        attempts++;
+      }
+
+      if (!visualContainer) {
+        console.error('Timed out waiting for content to load');
+        throw new Error('Content failed to load');
+      }
+
+      // Give a small delay for final render
+      await new Promise(resolve => setTimeout(resolve, 500));
+      console.log('Capturing content...');
+
+      // Capture just the visual container
+      const canvas = await html2canvas(visualContainer as HTMLElement, {
+        background: 'white',
+        logging: false,
+        useCORS: true,
+        allowTaint: true
+      });
+
+      console.log('Content captured successfully');
+
+      const imageData = {
+        ...selectedItem,
+        capturedImage: canvas.toDataURL('image/png')
+      };
+
+      await OfficeService.insertContent(imageData);
+      console.log('Content inserted into document');
 
       setShowPreview(false);
     } catch (error) {
       console.error('Failed to capture and insert content:', error);
-      // Only fall back to regular content insertion for metrics
-      if (selectedItem.hasOwnProperty('id')) {
-        console.log('Falling back to regular metric content insertion');
-        await OfficeService.insertContent(selectedItem);
-      } else {
-        // For dashboards, show error if capture fails
-        console.error('Failed to capture dashboard');
-      }
       setShowPreview(false);
     }
   };
@@ -241,23 +217,24 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
       let mounted = true;
       const cleanupTimeout: NodeJS.Timeout | null = null;
       
-      // Only initialize Lightning component for dashboards
-      if (!item.hasOwnProperty('id') && item.DeveloperName) {
-        const accessToken = localStorage.getItem('sf_access_token');
-        if (accessToken) {
-          OfficeService.initializeLightningComponent(containerId, item.DeveloperName, accessToken)
-            .then(() => {
-              if (mounted) {
-                setIsLightningLoaded(true);
-              }
-            })
-            .catch(error => {
-              console.error('Error initializing Lightning component:', error);
-              if (mounted) {
-                setIsLightningLoaded(false);
-              }
-            });
-        }
+      // Initialize Lightning component for both metrics and dashboards
+      const accessToken = localStorage.getItem('sf_access_token');
+      if (accessToken) {
+        // For metrics, we use the metric ID. For dashboards, we use the DeveloperName
+        const idOrName = item.hasOwnProperty('id') ? item.id : item.DeveloperName;
+        
+        OfficeService.initializeLightningComponent(containerId, idOrName, accessToken)
+          .then(() => {
+            if (mounted) {
+              setIsLightningLoaded(true);
+            }
+          })
+          .catch(error => {
+            console.error('Error initializing Lightning component:', error);
+            if (mounted) {
+              setIsLightningLoaded(false);
+            }
+          });
       }
       
       return () => {
@@ -274,7 +251,7 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
           console.warn('Error during Lightning component cleanup:', error);
         }
       };
-    }, [item.DeveloperName, containerId]);
+    }, [item.DeveloperName, item.id, containerId]);
     
     const formatDate = (dateString: string) => {
       if (!dateString) return 'Unknown';
@@ -288,153 +265,80 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
     // Determine if this is a metric or dashboard
     const isMetric = item.hasOwnProperty('id') && item.hasOwnProperty('metadata');
 
-    if (isMetric) {
-      // Metric Preview
-      return (
-        <div ref={previewRef} className="preview-card" style={{ padding: '20px', maxWidth: '600px' }}>
-          <Stack tokens={{ childrenGap: 16 }}>
-            <Text variant="xLarge" styles={{ root: { fontWeight: 600 } }}>
-              {item.metadata?.asset?.label || item.label}
-            </Text>
-            
-            {item.metadata?.asset?.metricValue && (
-              <Text variant="large" styles={{ root: { color: theme.palette.themePrimary } }}>
-                {item.metadata.asset.metricValue}
-              </Text>
-            )}
-
-            {item.metadata?.asset?.metricInsight && (
-              <div style={{ 
-                padding: '12px', 
-                backgroundColor: theme.palette.neutralLighter,
-                borderRadius: '4px'
-              }}>
-                <Text>
-                  <Icon iconName="Lightbulb" style={{ marginRight: 8, color: theme.palette.themePrimary }} />
-                  {item.metadata.asset.metricInsight}
-                </Text>
-              </div>
-            )}
-
-            {item.metadata?.downloadFile?.base64EncodedData && (
-              <div style={{ 
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                maxHeight: 200,
-                overflow: 'hidden',
-                backgroundColor: theme.palette.neutralLighterAlt,
-                borderRadius: 4,
-                border: `1px solid ${theme.palette.neutralLight}`
-              }}>
-                <img 
-                  src={`data:${item.metadata.downloadFile.fileType || 'image/png'};base64,${item.metadata.downloadFile.base64EncodedData}`}
-                  alt="Metric Preview"
-                  style={{
-                    maxWidth: 200,
-                    maxHeight: 200,
-                    width: 'auto',
-                    height: 'auto',
-                    objectFit: 'contain'
-                  }}
-                />
-              </div>
-            )}
-
-            <Stack tokens={{ childrenGap: 8 }}>
-              {item.metadata?.asset?.metricFilterSummary && (
-                <Stack horizontal horizontalAlign="space-between">
-                  <Text variant="small">Time Range:</Text>
-                  <Text variant="small">
-                    <Icon iconName="Calendar" style={{ marginRight: 4 }} />
-                    {item.metadata.asset.metricFilterSummary}
-                  </Text>
-                </Stack>
-              )}
-
-              <Stack horizontal horizontalAlign="space-between">
-                <Text variant="small">Created:</Text>
-                <Text variant="small">
-                  {formatDate(item.metadata?.asset?.createdDate)}
-                  <span style={{ margin: '0 4px' }}>•</span>
-                  {item.metadata?.asset?.createdBy?.name || 'Unknown'}
-                </Text>
-              </Stack>
-
-              {item.metadata?.asset?.lastModifiedDate && (
-                <Stack horizontal horizontalAlign="space-between">
-                  <Text variant="small">Modified:</Text>
-                  <Text variant="small">
-                    {formatDate(item.metadata.asset.lastModifiedDate)}
-                    <span style={{ margin: '0 4px' }}>•</span>
-                    {item.metadata.asset.lastModifiedBy?.name || 'Unknown'}
-                  </Text>
-                </Stack>
-              )}
-            </Stack>
-
-            <Text variant="small" style={{ color: theme.palette.neutralSecondary }}>
-              Metric ID: {item.metadata?.asset?.id || item.id}
-            </Text>
-          </Stack>
-        </div>
-      );
-    } else {
-      // Dashboard Preview
-      return (
-        <div ref={previewRef} className="preview-card" style={{ padding: '20px' }}>
-          <Stack tokens={{ childrenGap: 16 }}>
-            <Stack horizontal horizontalAlign="space-between" verticalAlign="center">
-              <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 8 }}>
-                <Icon iconName="ViewDashboard" style={{ fontSize: 20, color: theme.palette.themePrimary }} />
-                <Text variant="large" styles={{ root: { fontWeight: 600 } }}>
-                  {item.MasterLabel || item.Name || 'Unknown Dashboard'}
-                </Text>
-              </Stack>
-              <Text variant="small" style={{ color: theme.palette.neutralSecondary }}>
-                {item.AnalyticsWorkspace ? item.AnalyticsWorkspace.MasterLabel : 'Dashboard'}
-              </Text>
-            </Stack>
-
-            {/* Lightning Component Container */}
-            <div style={{ 
-              minHeight: 300, 
-              border: `1px solid ${theme.palette.neutralLight}`,
-              borderRadius: 4,
-              padding: 8,
-              backgroundColor: theme.palette.white,
-              position: 'relative'
-            }}>
-              <div id={containerId}>
-                {!isLightningLoaded && (
-                  <Stack 
-                    horizontalAlign="center" 
-                    verticalAlign="center" 
-                    styles={{ root: { height: 300 } }}
-                  >
-                    <Spinner size={SpinnerSize.large} label="Loading dashboard..." />
-                  </Stack>
-                )}
-              </div>
-            </div>
-
-            <Stack 
-              styles={{
-                root: {
-                  borderTop: `1px solid ${theme.palette.neutralLight}`,
-                  paddingTop: 12,
-                  marginTop: 12
+    // Common preview layout for both metrics and dashboards
+    return (
+      <div ref={previewRef} className="preview-card" style={{ padding: '20px' }}>
+        <Stack tokens={{ childrenGap: 16 }}>
+          <Stack horizontal horizontalAlign="space-between" verticalAlign="center">
+            <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 8 }}>
+              <Icon 
+                iconName={isMetric ? "Chart" : "ViewDashboard"} 
+                style={{ fontSize: 20, color: theme.palette.themePrimary }} 
+              />
+              <Text variant="large" styles={{ root: { fontWeight: 600 } }}>
+                {isMetric 
+                  ? (item.metadata?.asset?.label || item.label)
+                  : (item.MasterLabel || item.Name || 'Unknown Dashboard')
                 }
-              }}
-            >
-              <Text variant="small" style={{ color: theme.palette.neutralSecondary }}>
-                Dashboard ID: {item.Id || 'Unknown'}
               </Text>
             </Stack>
+            <Text variant="small" style={{ color: theme.palette.neutralSecondary }}>
+              {isMetric ? 'Metric' : (item.AnalyticsWorkspace ? item.AnalyticsWorkspace.MasterLabel : 'Dashboard')}
+            </Text>
           </Stack>
-        </div>
-      );
-    }
+
+          {/* Lightning Component Container */}
+          <div style={{ 
+            minHeight: 300, 
+            border: `1px solid ${theme.palette.neutralLight}`,
+            borderRadius: 4,
+            padding: 8,
+            backgroundColor: theme.palette.white,
+            position: 'relative'
+          }}>
+            <div id={containerId}>
+              {!isLightningLoaded && (
+                <Stack 
+                  horizontalAlign="center" 
+                  verticalAlign="center" 
+                  styles={{ root: { height: 300 } }}
+                >
+                  <Spinner size={SpinnerSize.large} label={`Loading ${isMetric ? 'metric' : 'dashboard'}...`} />
+                </Stack>
+              )}
+            </div>
+          </div>
+
+          {/* Additional details for metrics */}
+          {isMetric && item.metadata?.asset?.metricInsight && (
+            <div style={{ 
+              padding: '12px', 
+              backgroundColor: theme.palette.neutralLighter,
+              borderRadius: '4px'
+            }}>
+              <Text>
+                <Icon iconName="Lightbulb" style={{ marginRight: 8, color: theme.palette.themePrimary }} />
+                {item.metadata.asset.metricInsight}
+              </Text>
+            </div>
+          )}
+
+          <Stack 
+            styles={{
+              root: {
+                borderTop: `1px solid ${theme.palette.neutralLight}`,
+                paddingTop: 12,
+                marginTop: 12
+              }
+            }}
+          >
+            <Text variant="small" style={{ color: theme.palette.neutralSecondary }}>
+              {isMetric ? `Metric ID: ${item.metadata?.asset?.id || item.id}` : `Dashboard ID: ${item.Id || 'Unknown'}`}
+            </Text>
+          </Stack>
+        </Stack>
+      </div>
+    );
   };
 
   return (
