@@ -401,26 +401,17 @@ export class SalesforceAuth {
 
       // Return mock metrics data based on the screenshot
       const mockMetric = {
-        assetType: "semanticsubmetric",
-        createdBy: { Name: "Admin User" },
-        createdDate: "2025-03-21T20:21:48.000Z",
-        description: "",
-        filterLogic: "",
-        filters: [],
         id: "1HUUA0000001F8H4AU",
-        label: "Swim Count",
-        lastModifiedDate: "2025-03-21T20:21:48.000Z",
-        modelId: "2SMUA0000004ZC54AM",
         name: "sub_metric_b6fcf61a_5871_4d4d_9917_cd762b02b435",
-        semanticMetricId: "1DOUA0000005zu54AA",
+        label: "Swim Count",
         metadata: {
           root: {
             asset: {
-              createdBy: {},
+              createdBy: { Name: "Admin User" },
               createdDate: "2025-03-21T20:21:48.000Z",
               id: "1HUUA0000001F8H4AU",
               label: "Swim Count",
-              lastModifiedBy: {},
+              lastModifiedBy: { Name: "Admin User" },
               lastModifiedDate: "2025-03-21T20:21:48.000Z",
               metricFilterSummary: "Last 30 days",
               metricFilters: [],
@@ -436,7 +427,7 @@ export class SalesforceAuth {
       // Get current user ID
       const userId = await this.getCurrentUserId();
       
-      // Make API call to get followed metrics
+      // First, get the list of metrics
       console.log(`Making metrics API call to ${instance.instanceUrl} for user ${userId}`);
       
       const response = await fetch(`${instance.instanceUrl}/services/data/v64.0/tableau/follow/followers/${userId}/followed-assets`, {
@@ -454,14 +445,14 @@ export class SalesforceAuth {
       }
 
       const data = await response.json();
-      console.log('Received metrics data from Salesforce API:', data);
+      console.log('Received metrics list from Salesforce API:', data);
       
-      // Transform and fetch metadata for each metric
+      // For each metric, fetch its metadata
       if (data.followedAssets && Array.isArray(data.followedAssets)) {
         const metricsWithMetadata = await Promise.all(
           data.followedAssets.map(async (metric: any) => {
             try {
-              // Fetch metadata for each metric
+              console.log(`Fetching metadata for metric ${metric.id}`);
               const metadataResponse = await fetch(`${instance.instanceUrl}/tableau/download?metadataOnly=true`, {
                 method: 'POST',
                 headers: {
@@ -482,24 +473,14 @@ export class SalesforceAuth {
               }
 
               const metadata = await metadataResponse.json();
-              
+              console.log(`Received metadata for metric ${metric.id}:`, metadata);
+
+              // Return a simplified object with just what we need
               return {
                 id: metric.id,
-                assetType: metric.assetType || 'semanticsubmetric',
-                label: metric.label || metric.name || 'Untitled Metric',
-                name: metric.name || metric.label || 'Untitled Metric',
-                description: metric.description || '',
-                createdBy: metric.createdBy || { Name: 'Unknown User' },
-                createdDate: metric.createdDate,
-                lastModifiedBy: metric.lastModifiedBy || metric.createdBy || { Name: 'Unknown User' },
-                lastModifiedDate: metric.lastModifiedDate || metric.createdDate,
-                modelId: metric.modelId || '',
-                semanticMetricId: metric.semanticMetricId || '',
-                filterLogic: metric.filterLogic || '',
-                filters: metric.filters || [],
-                timeRange: metric.timeRange || metric.followedTimeRange || null,
-                type: 'Semantic Metric',
-                metadata
+                name: metric.name,
+                label: metric.label,
+                metadata: metadata // This contains the detailed metadata from the second API call
               };
             } catch (error) {
               console.warn(`Failed to fetch metadata for metric ${metric.id}:`, error);
@@ -513,83 +494,6 @@ export class SalesforceAuth {
       return [];
     } catch (error) {
       console.error('Salesforce metrics data fetch error:', error);
-      throw error;
-    }
-  }
-
-  async getMetricMetadata(metricId: string): Promise<any> {
-    try {
-      const accessToken = localStorage.getItem('sf_access_token');
-      if (!accessToken) {
-        throw new Error('No access token found');
-      }
-
-      const response = await fetch('https://sdb42com6.test13.lightning.pc-rnd.force.com/tableau/download?metadataOnly=true', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          asset: {
-            type: "Submetric",
-            assetId: metricId,
-            timeRange: "eyJmaWVsZE5hbWUiOiIiLCJvcGVyYXRvciI6Ikxhc3RORGF5cyIsInZhbHVlcyI6WzMwXX0"
-          }
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch metric metadata: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      return data;
-    } catch (error) {
-      console.error('Error fetching metric metadata:', error);
-      throw error;
-    }
-  }
-
-  async getMetricsData(): Promise<any[]> {
-    try {
-      const accessToken = localStorage.getItem('sf_access_token');
-      if (!accessToken) {
-        throw new Error('No access token found');
-      }
-
-      const response = await fetch('https://sdb42com6.test13.lightning.pc-rnd.force.com/services/data/v59.0/wave/metrics', {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch metrics data');
-      }
-
-      const data = await response.json();
-      const metrics = data.metrics || [];
-
-      // Fetch metadata for each metric
-      const metricsWithMetadata = await Promise.all(
-        metrics.map(async (metric: any) => {
-          try {
-            const metadata = await this.getMetricMetadata(metric.id);
-            return {
-              ...metric,
-              metadata
-            };
-          } catch (error) {
-            console.warn(`Failed to fetch metadata for metric ${metric.id}:`, error);
-            return metric;
-          }
-        })
-      );
-
-      return metricsWithMetadata;
-    } catch (error) {
-      console.error('Error fetching metrics data:', error);
       throw error;
     }
   }
