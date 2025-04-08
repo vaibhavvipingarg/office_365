@@ -219,7 +219,7 @@ export const OfficeService = {
             }
           );
         },
-        'https://sdb42com6.test13.my.pc-rnd.salesforce.com',
+        'https://sdb42com6.test13.lightning.pc-rnd.force.com',
         accessToken,
         // Add additional Lightning Out configuration
         {
