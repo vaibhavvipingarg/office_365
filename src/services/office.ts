@@ -85,45 +85,112 @@ export const OfficeService = {
           try {
             // For PowerPoint, we'll use the document API to insert the image
             let imageData;
+            let originalWidth = 0;
+            let originalHeight = 0;
               
             if (content.capturedImage) {
               // Get the base64 data without the data URL prefix
-              imageData = content.capturedImage;
+              imageData = content.capturedImage.split(',')[1];
+              // Create temporary image to get dimensions
+              const img = new Image();
+              await new Promise((resolve, reject) => {
+                img.onload = resolve;
+                img.onerror = reject;
+                img.src = content.capturedImage;
+              });
+              originalWidth = img.width;
+              originalHeight = img.height;
             } else {
               // Try to capture the content as an image
               const element = document.querySelector('[id^="preview-lightning-"]');
               if (element) {
+                // Get the natural dimensions of the element
+                const rect = element.getBoundingClientRect();
+                originalWidth = rect.width;
+                originalHeight = rect.height;
+
+                // Set up high-quality canvas capture
+                const scale = 2; // Capture at 2x resolution for better quality
                 const canvas = await html2canvas(element as HTMLElement, {
                   logging: true,
                   useCORS: true,
                   allowTaint: true,
-                  background: '#ffffff'
+                  background: '#ffffff',
+                  scale: scale,
+                  width: originalWidth,
+                  height: originalHeight
                 });
-                imageData = canvas.toDataURL('image/png', 1.0);
+                imageData = canvas.toDataURL('image/png', 1.0).split(',')[1];
               } else {
                 throw new Error('No content to capture as image');
               }
             }
 
+            // Calculate dimensions while maintaining aspect ratio
+            const maxWidth = 720; // Max width for PowerPoint slide
+            const maxHeight = 432; // Max height for PowerPoint slide (60% of slide height)
+            
+            let targetWidth = originalWidth;
+            let targetHeight = originalHeight;
+            
+            // Scale down if image is too large
+            if (targetWidth > maxWidth || targetHeight > maxHeight) {
+              const ratio = Math.min(maxWidth / targetWidth, maxHeight / targetHeight);
+              targetWidth = Math.floor(targetWidth * ratio);
+              targetHeight = Math.floor(targetHeight * ratio);
+            }
+
+            // Center the image on the slide
+            const slideWidth = 960; // Standard PowerPoint slide width
+            const slideHeight = 720; // Standard PowerPoint slide height
+            const left = Math.floor((slideWidth - targetWidth) / 2);
+            const top = Math.floor((slideHeight - targetHeight) / 2);
+
             // Insert the image using the document API
             return new Promise((resolve, reject) => {
-              Office.context.document.setSelectedDataAsync(
-                imageData,
-                { coercionType: Office.CoercionType.Image },
-                (result) => {
-                  if (result.status === Office.AsyncResultStatus.Succeeded) {
-                    console.log('Image inserted successfully in PowerPoint');
-                    resolve(true);
-                  } else {
-                    console.error('Failed to insert image in PowerPoint:', result.error);
-                    reject(result.error);
+              try {
+                // Convert base64 to coercion type image with calculated dimensions
+                const options = {
+                  coercionType: Office.CoercionType.Image,
+                  imageLeft: left,
+                  imageTop: top,
+                  imageWidth: targetWidth,
+                  imageHeight: targetHeight
+                };
+
+                Office.context.document.setSelectedDataAsync(
+                  imageData,
+                  options,
+                  (asyncResult) => {
+                    if (asyncResult.status === Office.AsyncResultStatus.Succeeded) {
+                      console.log('Image inserted successfully in PowerPoint');
+                      resolve(true);
+                    } else {
+                      console.error('Failed to insert image:', asyncResult.error.message);
+                      // Fallback to text if image insertion fails
+                      const formattedContent = this.formatContentForPowerPoint(content);
+                      Office.context.document.setSelectedDataAsync(
+                        formattedContent,
+                        { coercionType: Office.CoercionType.Text },
+                        (result) => {
+                          if (result.status === Office.AsyncResultStatus.Succeeded) {
+                            resolve(true);
+                          } else {
+                            reject(result.error);
+                          }
+                        }
+                      );
+                    }
                   }
-                }
-              );
+                );
+              } catch (error) {
+                console.error('Error in PowerPoint image insertion:', error);
+                reject(error);
+              }
             });
           } catch (error) {
-            console.error('Failed to insert image in PowerPoint:', error);
-            // Fallback to text if image insertion fails
+            console.error('Failed to process image for PowerPoint:', error);
+            // Fallback to text
             formattedContent = this.formatContentForPowerPoint(content);
             coercionType = Office.CoercionType.Text;
           }
@@ -377,6 +444,10 @@ export const OfficeService = {
         ? (content.label || 'Metric Card')
         : (content.MasterLabel || content.Name || 'Dashboard');
 
+      // Similar scaling logic as PowerPoint
+      const maxWidth = 600; // Max width for Word document
+      const maxHeight = 400; // Max height (about 60% of typical visible height)
+
       return `
         <div style="font-family: 'Segoe UI', sans-serif; margin: 10px 0;">
           <div style="padding: 15px;">
@@ -386,7 +457,7 @@ export const OfficeService = {
             <img 
               src="${content.capturedImage}" 
               alt="${title}" 
-              style="display: block; width: 100%; max-width: 800px; height: auto; margin: 0 auto;"
+              style="display: block; width: auto; max-width: ${maxWidth}px; max-height: ${maxHeight}px; height: auto; margin: 0 auto; object-fit: contain;"
             />
             <div style="font-size: 11px; color: #a19f9d; margin-top: 10px;">
               ${content.hasOwnProperty('id') ? `Metric ID: ${content.id}` : `Dashboard ID: ${content.Id || 'Unknown'}`}
