@@ -143,12 +143,19 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
         throw new Error('Preview element not found');
       }
 
+      // For dashboards, wait a bit to ensure Lightning component is fully rendered
+      if (!selectedItem.hasOwnProperty('id')) {
+        // This is a dashboard
+        await new Promise(resolve => setTimeout(resolve, 2000)); // Wait for Lightning to stabilize
+      }
+
       const canvas = await html2canvas(previewElement, {
-        background: 'transparent',
+        background: 'white',
         width: previewElement.offsetWidth,
         height: previewElement.offsetHeight,
         logging: false,
-        useCORS: true
+        useCORS: true,
+        allowTaint: true
       });
 
       const imageData = {
