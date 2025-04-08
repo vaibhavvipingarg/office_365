@@ -400,7 +400,7 @@ export class SalesforceAuth {
       await new Promise(resolve => setTimeout(resolve, 800));
 
       // Return mock metrics data based on the screenshot
-      return [{
+      const mockMetric = {
         assetType: "semanticsubmetric",
         createdBy: { Name: "Admin User" },
         createdDate: "2025-03-21T20:21:48.000Z",
@@ -408,12 +408,28 @@ export class SalesforceAuth {
         filterLogic: "",
         filters: [],
         id: "1HUUA0000001F8H4AU",
-        label: "sub-metric-b6fcf61a-5871-4d4d-9917-cd762b02b435",
+        label: "Swim Count",
         lastModifiedDate: "2025-03-21T20:21:48.000Z",
         modelId: "2SMUA0000004ZC54AM",
         name: "sub_metric_b6fcf61a_5871_4d4d_9917_cd762b02b435",
-        semanticMetricId: "1DOUA0000005zu54AA"
-      }];
+        semanticMetricId: "1DOUA0000005zu54AA",
+        metadata: {
+          root: {
+            asset: {
+              createdBy: {},
+              createdDate: "2025-03-21T20:21:48.000Z",
+              id: "1HUUA0000001F8H4AU",
+              label: "Swim Count",
+              lastModifiedBy: {},
+              lastModifiedDate: "2025-03-21T20:21:48.000Z",
+              metricFilterSummary: "Last 30 days",
+              metricFilters: [],
+              name: "sub_metric_b6fcf61a_5871_4d4d_9917_cd762b02b435"
+            }
+          }
+        }
+      };
+      return [mockMetric];
     }
 
     try {
@@ -440,54 +456,58 @@ export class SalesforceAuth {
       const data = await response.json();
       console.log('Received metrics data from Salesforce API:', data);
       
-      // Transform the followedAssets array into our expected format
+      // Transform and fetch metadata for each metric
       if (data.followedAssets && Array.isArray(data.followedAssets)) {
-        return data.followedAssets.map((metric: any) => {
-          // Extract the base properties we need
-          const {
-            assetType,
-            createdBy,
-            createdDate,
-            description,
-            filterLogic,
-            filters,
-            id,
-            label,
-            lastModifiedBy,
-            lastModifiedDate,
-            modelId,
-            name,
-            semanticMetricId,
-            timeRange,
-            followedTimeRange
-          } = metric;
+        const metricsWithMetadata = await Promise.all(
+          data.followedAssets.map(async (metric: any) => {
+            try {
+              // Fetch metadata for each metric
+              const metadataResponse = await fetch(`${instance.instanceUrl}/tableau/download?metadataOnly=true`, {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${instance.accessToken}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  asset: {
+                    type: "Submetric",
+                    assetId: metric.id,
+                    timeRange: "eyJmaWVsZE5hbWUiOiIiLCJvcGVyYXRvciI6Ikxhc3RORGF5cyIsInZhbHVlcyI6WzMwXX0"
+                  }
+                })
+              });
 
-          // Format dates
-          const formattedCreatedDate = createdDate ? 
-            new Date(createdDate).toLocaleDateString() : 'N/A';
-          const formattedModifiedDate = lastModifiedDate ? 
-            new Date(lastModifiedDate).toLocaleDateString() : 'N/A';
+              if (!metadataResponse.ok) {
+                throw new Error(`Failed to fetch metric metadata: ${metadataResponse.statusText}`);
+              }
 
-          return {
-            id: id || `metric-${Math.random().toString(36).substring(2, 10)}`,
-            assetType: assetType || 'semanticsubmetric',
-            label: label || name || 'Untitled Metric',
-            name: name || label || 'Untitled Metric',
-            description: description || '',
-            createdBy: createdBy || { Name: 'Unknown User' },
-            createdDate: createdDate,
-            formattedCreatedDate: formattedCreatedDate,
-            lastModifiedBy: lastModifiedBy || createdBy || { Name: 'Unknown User' },
-            lastModifiedDate: lastModifiedDate || createdDate,
-            formattedModifiedDate: formattedModifiedDate,
-            modelId: modelId || '',
-            semanticMetricId: semanticMetricId || '',
-            filterLogic: filterLogic || '',
-            filters: filters || [],
-            timeRange: timeRange || followedTimeRange || null,
-            type: 'Semantic Metric'
-          };
-        });
+              const metadata = await metadataResponse.json();
+              
+              return {
+                id: metric.id,
+                assetType: metric.assetType || 'semanticsubmetric',
+                label: metric.label || metric.name || 'Untitled Metric',
+                name: metric.name || metric.label || 'Untitled Metric',
+                description: metric.description || '',
+                createdBy: metric.createdBy || { Name: 'Unknown User' },
+                createdDate: metric.createdDate,
+                lastModifiedBy: metric.lastModifiedBy || metric.createdBy || { Name: 'Unknown User' },
+                lastModifiedDate: metric.lastModifiedDate || metric.createdDate,
+                modelId: metric.modelId || '',
+                semanticMetricId: metric.semanticMetricId || '',
+                filterLogic: metric.filterLogic || '',
+                filters: metric.filters || [],
+                timeRange: metric.timeRange || metric.followedTimeRange || null,
+                type: 'Semantic Metric',
+                metadata
+              };
+            } catch (error) {
+              console.warn(`Failed to fetch metadata for metric ${metric.id}:`, error);
+              return metric;
+            }
+          })
+        );
+        return metricsWithMetadata;
       }
       
       return [];

@@ -161,12 +161,12 @@ export const MetricCard: React.FC<MetricCardProps> = ({
       )}
       <div className={styles.header}>
         <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 4 }}>
-          <Text className={styles.title} title={item.label || item.name}>
+          <Text className={styles.title} title={item.metadata?.root?.asset?.label || item.label || item.name}>
             {item.metadata?.root?.asset?.label || item.label || item.name}
           </Text>
           <div className={styles.type} title={item.assetType || 'Metric'}>
             <Icon iconName="Chart" className={styles.icon} />
-            {item.metadata?.root?.asset?.type || item.assetType || 'Metric'}
+            {item.assetType || 'Metric'}
           </div>
         </Stack>
       </div>
@@ -214,7 +214,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
       <div className={styles.footerSection}>
         <span style={{ fontSize: 10 }}>
           <Icon iconName="ChartSeries" style={{ fontSize: 10, marginRight: 4 }} />
-          ID: {item.metadata?.root?.asset?.id || item.id?.substring(0, 10)}...
+          ID: {item.metadata?.root?.asset?.id?.substring(0, 10) || item.id?.substring(0, 10)}...
         </span>
         {item.metadata?.root?.asset?.name && (
           <span style={{ fontSize: 10 }}>

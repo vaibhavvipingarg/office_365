@@ -161,11 +161,39 @@ export const OfficeService = {
     }
   },
 
+  initializeLightningComponent(containerId: string, dashboardId: string, accessToken: string): Promise<void> {
+    console.log('Initializing Lightning component...', { containerId, dashboardId });
+    
+    return new Promise((resolve, reject) => {
+      try {
+        // Load Lightning Out script if not already loaded
+        if (!document.querySelector('script[src*="lightning.out.js"]')) {
+          const script = document.createElement('script');
+          // Add timestamp to prevent caching
+          script.src = `https://sdb42com6.test13.my.pc-rnd.salesforce.com/lightning/lightning.out.js?_=${Date.now()}`;
+          script.onload = () => {
+            this.createLightningComponent(containerId, dashboardId, accessToken, resolve, reject);
+          };
+          script.onerror = (error) => {
+            console.error('Failed to load Lightning Out script:', error);
+            reject(error);
+          };
+          document.head.appendChild(script);
+        } else {
+          this.createLightningComponent(containerId, dashboardId, accessToken, resolve, reject);
+        }
+      } catch (error) {
+        console.error('Error initializing Lightning Out:', error);
+        reject(error);
+      }
+    });
+  },
+
+  // Helper method to create the Lightning component
   createLightningComponent(
     containerId: string, 
-    itemId: string,
+    dashboardId: string, 
     accessToken: string,
-    isMetric: boolean = false,
     resolve: () => void,
     reject: (error: Error) => void
   ): void {
@@ -178,14 +206,13 @@ export const OfficeService = {
         () => {
           console.log('Lightning app initialized, creating component...');
           window.$Lightning.createComponent(
-            isMetric ? "analytics_embedding:metric3p" : "analytics_embedding:dashboard3p",
+            "analytics_embedding:dashboard3p",
             {
               height: 300,
-              idOrApiName: itemId,
+              idOrApiName: dashboardId,
               allowTransparency: true,
               showHeader: false,
-              showSharing: false,
-              ...(isMetric && { isSubmetric: true })
+              showSharing: false
             },
             containerId,
             (cmp: any) => {
@@ -217,12 +244,6 @@ export const OfficeService = {
       console.error('Lightning Out not available');
       reject(new Error('Lightning Out not available'));
     }
-  },
-
-  async initializeLightningComponent(containerId: string, itemId: string, accessToken: string, isMetric: boolean = false): Promise<void> {
-    return new Promise((resolve, reject) => {
-      this.createLightningComponent(containerId, itemId, accessToken, isMetric, resolve, reject);
-    });
   },
 
   formatContentAsHtml(content: any): string {

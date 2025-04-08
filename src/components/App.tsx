@@ -189,25 +189,23 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
       let mounted = true;
       let cleanupTimeout: NodeJS.Timeout;
       
-      // Initialize Lightning component for both dashboards and metrics
-      const accessToken = localStorage.getItem('sf_access_token');
-      if (accessToken) {
-        // For dashboards, use DeveloperName; for metrics, use id
-        const itemId = item.hasOwnProperty('id') ? item.id : item.DeveloperName;
-        const isMetric = item.hasOwnProperty('id');
-
-        OfficeService.initializeLightningComponent(containerId, itemId, accessToken, isMetric)
-          .then(() => {
-            if (mounted) {
-              setIsLightningLoaded(true);
-            }
-          })
-          .catch(error => {
-            console.error('Error initializing Lightning component:', error);
-            if (mounted) {
-              setIsLightningLoaded(false);
-            }
-          });
+      // Only initialize Lightning component for dashboards
+      if (!item.hasOwnProperty('id') && item.DeveloperName) {
+        const accessToken = localStorage.getItem('sf_access_token');
+        if (accessToken) {
+          OfficeService.initializeLightningComponent(containerId, item.DeveloperName, accessToken)
+            .then(() => {
+              if (mounted) {
+                setIsLightningLoaded(true);
+              }
+            })
+            .catch(error => {
+              console.error('Error initializing Lightning component:', error);
+              if (mounted) {
+                setIsLightningLoaded(false);
+              }
+            });
+        }
       }
       
       // Cleanup function
@@ -227,7 +225,7 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
           }
         }, 100);
       };
-    }, [item.DeveloperName, item.id, containerId]);
+    }, [item.DeveloperName, containerId]);
     
     const getDashboardIcon = () => {
       return 'ViewDashboard';
