@@ -88,10 +88,23 @@ export const OfficeService = {
           formattedContent = this.formatContentAsHtml(content);
           break;
         case 'PowerPoint':
-          // For PowerPoint, if we have a captured image, use it directly
+          // For PowerPoint, we need to use the PowerPoint-specific API
           if (content.capturedImage) {
-            formattedContent = content.capturedImage;
-            coercionType = Office.CoercionType.Image;
+            // Use PowerPoint shapes API to add the image
+            return await PowerPoint.run(async (context) => {
+              const slide = context.presentation.slides.getActiveSlide();
+              // Get the base64 data URL without the prefix
+              const base64Data = content.capturedImage.split(',')[1];
+              // Add the image to the slide
+              const shape = slide.shapes.addImage(base64Data);
+              // Set position and size (optional)
+              shape.left = 50;  // pixels from left
+              shape.top = 50;   // pixels from top
+              shape.width = 400; // width in pixels
+              shape.height = 300; // height in pixels
+              await context.sync();
+              return true;
+            });
           } else {
             // Try to capture the content as an image first
             try {
@@ -103,8 +116,22 @@ export const OfficeService = {
                   allowTaint: true,
                   background: '#ffffff'
                 });
-                formattedContent = canvas.toDataURL('image/png', 1.0);
-                coercionType = Office.CoercionType.Image;
+                const imageDataUrl = canvas.toDataURL('image/png', 1.0);
+                // Use PowerPoint shapes API to add the captured image
+                return await PowerPoint.run(async (context) => {
+                  const slide = context.presentation.slides.getActiveSlide();
+                  // Get the base64 data without the prefix
+                  const base64Data = imageDataUrl.split(',')[1];
+                  // Add the image to the slide
+                  const shape = slide.shapes.addImage(base64Data);
+                  // Set position and size (optional)
+                  shape.left = 50;  // pixels from left
+                  shape.top = 50;   // pixels from top
+                  shape.width = 400; // width in pixels
+                  shape.height = 300; // height in pixels
+                  await context.sync();
+                  return true;
+                });
               } else {
                 // Fallback to text if no image can be captured
                 formattedContent = this.formatContentForPowerPoint(content);
@@ -141,8 +168,8 @@ export const OfficeService = {
               }
             }
           );
-        } else {
-          // For Word and PowerPoint, we use the document API
+        } else if (!this.isHostType('PowerPoint')) {
+          // For Word, we use the document API
           Office.context.document.setSelectedDataAsync(
             formattedContent,
             { coercionType },
