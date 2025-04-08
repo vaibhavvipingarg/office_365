@@ -473,6 +473,62 @@ export const OfficeService = {
       const targetOrigin = 'https://vaibhavvipingarg.github.io';
       console.log('Creating Lightning component with origin:', targetOrigin);
 
+      // Add the live indicator pill
+      const container = document.getElementById(containerId);
+      if (container) {
+        const liveIndicator = document.createElement('div');
+        liveIndicator.innerHTML = `
+          <div style="
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            z-index: 1000;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            backdrop-filter: blur(4px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+          ">
+            <span style="
+              display: inline-block;
+              width: 6px;
+              height: 6px;
+              background: #22c55e;
+              border-radius: 50%;
+              animation: pulse 2s infinite;
+            "></span>
+            LIVE
+          </div>
+          <style>
+            @keyframes pulse {
+              0% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+              }
+              
+              70% {
+                transform: scale(1);
+                box-shadow: 0 0 0 6px rgba(34, 197, 94, 0);
+              }
+              
+              100% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+              }
+            }
+          </style>
+        `;
+        container.style.position = 'relative';
+        container.appendChild(liveIndicator);
+      }
+
       window.$Lightning.use(
         "tableau_einstein:tableauEinsteinApp",
         () => {
