@@ -35,7 +35,22 @@ declare global {
             callback: (result: { status: string; value: any; error?: any }) => void
           ) => void;
         };
-        host: string;
+        mailbox?: {
+          item: {
+            itemType: string;
+            body: {
+              getTypeAsync: (callback: (result: { status: string; value?: string; error?: any }) => void) => void;
+              setSelectedDataAsync: (
+                data: string,
+                options: { coercionType: string; asyncContext?: any },
+                callback: (result: { status: string; error?: any }) => void
+              ) => void;
+            };
+          };
+        };
+        diagnostics: {
+          host: string;
+        };
       };
       AsyncResultStatus: {
         Succeeded: string;
@@ -45,6 +60,11 @@ declare global {
         Text: string;
         Html: string;
         Image: string;
+      };
+      MailboxEnums: {
+        ItemType: {
+          Message: string;
+        };
       };
     };
   }
@@ -64,182 +84,243 @@ export const OfficeService = {
     return this.getHostType().toLowerCase() === hostType.toLowerCase();
   },
 
-  async insertContent(content: any) {
-    try {
-      // Check if running in Office context
-      if (!window.Office) {
-        console.error('Office JS API not available');
-        return;
-      }
+  async insertContent(content: any): Promise<boolean> {
+    const hostType = this.getHostType();
+    console.log('Host type:', hostType);
 
-      // Format the content based on the host application
-      const hostType = this.getHostType();
-      let formattedContent;
-      let coercionType = Office.CoercionType.Html;
+    let formattedContent = '';
+    let coercionType = Office.CoercionType.Html;
 
-      switch (hostType) {
-        case 'Word':
-          formattedContent = this.formatContentAsHtml(content);
-          break;
-        case 'PowerPoint':
-          try {
-            // For PowerPoint, we'll use the document API to insert the image
-            let imageData;
-            let originalWidth = 0;
-            let originalHeight = 0;
-              
-            if (content.capturedImage) {
-              // Get the base64 data without the data URL prefix
-              imageData = content.capturedImage.split(',')[1];
-              // Create temporary image to get dimensions
-              const img = new Image();
-              await new Promise((resolve, reject) => {
-                img.onload = resolve;
-                img.onerror = reject;
-                img.src = content.capturedImage;
-              });
-              originalWidth = img.width;
-              originalHeight = img.height;
-            } else {
-              // Try to capture the content as an image
-              const element = document.querySelector('[id^="preview-lightning-"]');
-              if (element) {
-                // Get the natural dimensions of the element
-                const rect = element.getBoundingClientRect();
-                originalWidth = rect.width;
-                originalHeight = rect.height;
+    switch (hostType) {
+      case 'Outlook':
+        try {
+          // For Outlook, we need to use the mailbox item API
+          let htmlContent = '';
+          
+          if (content.capturedImage) {
+            // For images in Outlook, we'll create an HTML wrapper
+            const title = content.hasOwnProperty('id') 
+              ? (content.label || 'Metric Card')
+              : (content.MasterLabel || content.Name || 'Dashboard');
 
-                // Set up high-quality canvas capture
-                const scale = 2; // Capture at 2x resolution for better quality
-                const canvas = await html2canvas(element as HTMLElement, {
-                  logging: true,
-                  useCORS: true,
-                  allowTaint: true,
-                  background: '#ffffff',
-                  scale: scale,
-                  width: originalWidth,
-                  height: originalHeight
-                });
-                imageData = canvas.toDataURL('image/png', 1.0).split(',')[1];
-              } else {
-                throw new Error('No content to capture as image');
-              }
-            }
+            htmlContent = `
+              <div style="font-family: 'Segoe UI', sans-serif; margin: 10px 0;">
+                <div style="padding: 15px;">
+                  <div style="font-size: 18px; font-weight: 600; color: #0078d4; margin-bottom: 10px;">
+                    ${title}
+                  </div>
+                  <img 
+                    src="${content.capturedImage}" 
+                    alt="${title}" 
+                    style="display: block; width: auto; max-width: 600px; max-height: 400px; height: auto; margin: 0 auto; object-fit: contain;"
+                  />
+                  <div style="font-size: 11px; color: #a19f9d; margin-top: 10px;">
+                    ${content.hasOwnProperty('id') ? `Metric ID: ${content.id}` : `Dashboard ID: ${content.Id || 'Unknown'}`}
+                  </div>
+                </div>
+              </div>
+            `;
+          } else {
+            // For non-image content in Outlook
+            htmlContent = this.formatContentAsHtml(content);
+          }
 
-            // Calculate dimensions while maintaining aspect ratio
-            const maxWidth = 720; // Max width for PowerPoint slide
-            const maxHeight = 432; // Max height for PowerPoint slide (60% of slide height)
+          return new Promise((resolve, reject) => {
+            // Get the current item
+            const item = Office.context.mailbox.item;
             
-            let targetWidth = originalWidth;
-            let targetHeight = originalHeight;
-            
-            // Scale down if image is too large
-            if (targetWidth > maxWidth || targetHeight > maxHeight) {
-              const ratio = Math.min(maxWidth / targetWidth, maxHeight / targetHeight);
-              targetWidth = Math.floor(targetWidth * ratio);
-              targetHeight = Math.floor(targetHeight * ratio);
-            }
+            // Check if we're in compose mode
+            if (item.itemType === Office.MailboxEnums.ItemType.Message) {
+              // Get the current editor type
+              Office.context.mailbox.item.body.getTypeAsync((result) => {
+                if (result.status === Office.AsyncResultStatus.Failed) {
+                  reject(result.error);
+                  return;
+                }
 
-            // Center the image on the slide
-            const slideWidth = 960; // Standard PowerPoint slide width
-            const slideHeight = 720; // Standard PowerPoint slide height
-            const left = Math.floor((slideWidth - targetWidth) / 2);
-            const top = Math.floor((slideHeight - targetHeight) / 2);
-
-            // Insert the image using the document API
-            return new Promise((resolve, reject) => {
-              try {
-                // Convert base64 to coercion type image with calculated dimensions
-                const options = {
-                  coercionType: Office.CoercionType.Image,
-                  imageLeft: left,
-                  imageTop: top,
-                  imageWidth: targetWidth,
-                  imageHeight: targetHeight
-                };
-
-                Office.context.document.setSelectedDataAsync(
-                  imageData,
-                  options,
+                // Insert the content
+                Office.context.mailbox.item.body.setSelectedDataAsync(
+                  htmlContent,
+                  {
+                    coercionType: Office.CoercionType.Html,
+                    asyncContext: undefined
+                  },
                   (asyncResult) => {
                     if (asyncResult.status === Office.AsyncResultStatus.Succeeded) {
-                      console.log('Image inserted successfully in PowerPoint');
+                      console.log('Content inserted successfully in Outlook');
                       resolve(true);
                     } else {
-                      console.error('Failed to insert image:', asyncResult.error.message);
-                      // Fallback to text if image insertion fails
-                      const formattedContent = this.formatContentForPowerPoint(content);
-                      Office.context.document.setSelectedDataAsync(
-                        formattedContent,
-                        { coercionType: Office.CoercionType.Text },
-                        (result) => {
-                          if (result.status === Office.AsyncResultStatus.Succeeded) {
-                            resolve(true);
-                          } else {
-                            reject(result.error);
-                          }
-                        }
-                      );
+                      console.error('Failed to insert content in Outlook:', asyncResult.error);
+                      reject(asyncResult.error);
                     }
                   }
                 );
-              } catch (error) {
-                console.error('Error in PowerPoint image insertion:', error);
-                reject(error);
-              }
-            });
-          } catch (error) {
-            console.error('Failed to process image for PowerPoint:', error);
-            // Fallback to text
-            formattedContent = this.formatContentForPowerPoint(content);
-            coercionType = Office.CoercionType.Text;
-          }
-          break;
-        case 'Outlook':
-          formattedContent = this.formatContentForOutlook(content);
-          break;
-        default:
-          formattedContent = this.formatContentAsHtml(content);
-      }
-
-      // Insert the formatted content into the document
-      return new Promise((resolve, reject) => {
-        if (this.isHostType('Outlook')) {
-          // For Outlook, we use the document API instead of mailbox
-          Office.context.document.setSelectedDataAsync(
-            formattedContent,
-            { coercionType: Office.CoercionType.Html },
-            (result: { status: string; error?: any }) => {
-              if (result.status === Office.AsyncResultStatus.Succeeded) {
-                console.log('Content inserted successfully in Outlook');
-                resolve(true);
-              } else {
-                console.error('Error inserting content in Outlook:', result.error);
-                reject(result.error);
-              }
+              });
+            } else {
+              reject(new Error('Not in compose mode'));
             }
-          );
-        } else {
-          // For Word, we use the document API
-          Office.context.document.setSelectedDataAsync(
-            formattedContent,
-            { coercionType },
-            (result: { status: string; error?: any }) => {
-              if (result.status === Office.AsyncResultStatus.Succeeded) {
-                console.log('Content inserted successfully');
-                resolve(true);
-              } else {
-                console.error('Error inserting content:', result.error);
-                reject(result.error);
-              }
-            }
-          );
+          });
+        } catch (error) {
+          console.error('Error inserting content in Outlook:', error);
+          throw error;
         }
-      });
-    } catch (error) {
-      console.error('Error inserting content into document:', error);
-      throw error;
+        break;
+
+      case 'Word':
+        formattedContent = this.formatContentAsHtml(content);
+        break;
+      case 'PowerPoint':
+        try {
+          // For PowerPoint, we'll use the document API to insert the image
+          let imageData;
+          let originalWidth = 0;
+          let originalHeight = 0;
+            
+          if (content.capturedImage) {
+            // Get the base64 data without the data URL prefix
+            imageData = content.capturedImage.split(',')[1];
+            // Create temporary image to get dimensions
+            const img = new Image();
+            await new Promise((resolve, reject) => {
+              img.onload = resolve;
+              img.onerror = reject;
+              img.src = content.capturedImage;
+            });
+            originalWidth = img.width;
+            originalHeight = img.height;
+          } else {
+            // Try to capture the content as an image
+            const element = document.querySelector('[id^="preview-lightning-"]');
+            if (element) {
+              // Get the natural dimensions of the element
+              const rect = element.getBoundingClientRect();
+              originalWidth = rect.width;
+              originalHeight = rect.height;
+
+              // Set up high-quality canvas capture
+              const scale = 2; // Capture at 2x resolution for better quality
+              const canvas = await html2canvas(element as HTMLElement, {
+                logging: true,
+                useCORS: true,
+                allowTaint: true,
+                background: '#ffffff',
+                scale: scale,
+                width: originalWidth,
+                height: originalHeight
+              });
+              imageData = canvas.toDataURL('image/png', 1.0).split(',')[1];
+            } else {
+              throw new Error('No content to capture as image');
+            }
+          }
+
+          // Calculate dimensions while maintaining aspect ratio
+          const maxWidth = 720; // Max width for PowerPoint slide
+          const maxHeight = 432; // Max height for PowerPoint slide (60% of slide height)
+          
+          let targetWidth = originalWidth;
+          let targetHeight = originalHeight;
+          
+          // Scale down if image is too large
+          if (targetWidth > maxWidth || targetHeight > maxHeight) {
+            const ratio = Math.min(maxWidth / targetWidth, maxHeight / targetHeight);
+            targetWidth = Math.floor(targetWidth * ratio);
+            targetHeight = Math.floor(targetHeight * ratio);
+          }
+
+          // Center the image on the slide
+          const slideWidth = 960; // Standard PowerPoint slide width
+          const slideHeight = 720; // Standard PowerPoint slide height
+          const left = Math.floor((slideWidth - targetWidth) / 2);
+          const top = Math.floor((slideHeight - targetHeight) / 2);
+
+          // Insert the image using the document API
+          return new Promise((resolve, reject) => {
+            try {
+              // Convert base64 to coercion type image with calculated dimensions
+              const options = {
+                coercionType: Office.CoercionType.Image,
+                imageLeft: left,
+                imageTop: top,
+                imageWidth: targetWidth,
+                imageHeight: targetHeight
+              };
+
+              Office.context.document.setSelectedDataAsync(
+                imageData,
+                options,
+                (asyncResult) => {
+                  if (asyncResult.status === Office.AsyncResultStatus.Succeeded) {
+                    console.log('Image inserted successfully in PowerPoint');
+                    resolve(true);
+                  } else {
+                    console.error('Failed to insert image:', asyncResult.error.message);
+                    // Fallback to text if image insertion fails
+                    const formattedContent = this.formatContentForPowerPoint(content);
+                    Office.context.document.setSelectedDataAsync(
+                      formattedContent,
+                      { coercionType: Office.CoercionType.Text },
+                      (result) => {
+                        if (result.status === Office.AsyncResultStatus.Succeeded) {
+                          resolve(true);
+                        } else {
+                          reject(result.error);
+                        }
+                      }
+                    );
+                  }
+                }
+              );
+            } catch (error) {
+              console.error('Error in PowerPoint image insertion:', error);
+              reject(error);
+            }
+          });
+        } catch (error) {
+          console.error('Failed to process image for PowerPoint:', error);
+          // Fallback to text
+          formattedContent = this.formatContentForPowerPoint(content);
+          coercionType = Office.CoercionType.Text;
+        }
+        break;
+      default:
+        throw new Error(`Unsupported host type: ${hostType}`);
     }
+
+    // Insert the formatted content into the document
+    return new Promise((resolve, reject) => {
+      if (this.isHostType('Outlook')) {
+        // For Outlook, we use the document API instead of mailbox
+        Office.context.document.setSelectedDataAsync(
+          formattedContent,
+          { coercionType: Office.CoercionType.Html },
+          (result: { status: string; error?: any }) => {
+            if (result.status === Office.AsyncResultStatus.Succeeded) {
+              console.log('Content inserted successfully in Outlook');
+              resolve(true);
+            } else {
+              console.error('Error inserting content in Outlook:', result.error);
+              reject(result.error);
+            }
+          }
+        );
+      } else {
+        // For Word, we use the document API
+        Office.context.document.setSelectedDataAsync(
+          formattedContent,
+          { coercionType },
+          (result: { status: string; error?: any }) => {
+            if (result.status === Office.AsyncResultStatus.Succeeded) {
+              console.log('Content inserted successfully');
+              resolve(true);
+            } else {
+              console.error('Error inserting content:', result.error);
+              reject(result.error);
+            }
+          }
+        );
+      }
+    });
   },
 
   async insertImage(imageUrl: string): Promise<void> {
