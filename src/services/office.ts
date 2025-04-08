@@ -122,9 +122,6 @@ export const OfficeService = {
         return;
       }
 
-      // Wait for Lightning component to fully render
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
       try {
         // Capture just the Lightning component div
         const canvas = await html2canvas(lightningContainer as HTMLElement, {
@@ -223,8 +220,15 @@ export const OfficeService = {
             (cmp: any) => {
               if (cmp) {
                 console.log("Lightning component created successfully");
-                // Give the component a moment to render before resolving
-                setTimeout(resolve, 1000);
+                // Give the component a moment to render its inner content
+                setTimeout(() => {
+                  const container = document.getElementById(containerId);
+                  if (container) {
+                    // Set a data attribute to indicate the component is ready
+                    container.setAttribute('data-lightning-ready', 'true');
+                  }
+                  resolve();
+                }, 1000);
               } else {
                 console.error("Failed to create Lightning component");
                 reject(new Error("Failed to create Lightning component"));

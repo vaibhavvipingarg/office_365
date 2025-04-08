@@ -146,9 +146,17 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
         throw new Error('Preview element not found');
       }
 
-      // For dashboards, wait a moment to ensure the Lightning component is fully rendered
+      // For dashboards, wait for the Lightning component to be ready
       if (!selectedItem.hasOwnProperty('id') && selectedItem.DeveloperName) {
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        const lightningContainer = previewElement.querySelector('[id^="preview-lightning-"]');
+        if (lightningContainer) {
+          // Wait for the ready attribute to be set (max 5 seconds)
+          let attempts = 0;
+          while (!lightningContainer.getAttribute('data-lightning-ready') && attempts < 50) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+            attempts++;
+          }
+        }
       }
 
       // Capture and insert the preview (which now includes the Lightning component if it's a dashboard)
