@@ -204,10 +204,17 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
       // Cleanup function
       return () => {
         mounted = false;
-        // Clean up the Lightning component if it exists
-        const container = document.getElementById(containerId);
-        if (container) {
-          container.innerHTML = '';
+        // Safely cleanup the Lightning component if it exists
+        try {
+          const container = document.getElementById(containerId);
+          if (container) {
+            // Instead of clearing innerHTML, just remove the container's content
+            while (container.firstChild) {
+              container.removeChild(container.firstChild);
+            }
+          }
+        } catch (error) {
+          console.warn('Error during Lightning component cleanup:', error);
         }
       };
     }, [item.DeveloperName, containerId]); // Only depend on the DeveloperName, not the entire item

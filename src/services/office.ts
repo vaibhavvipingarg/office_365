@@ -133,22 +133,29 @@ export const OfficeService = {
         
         console.log('Lightning component captured as canvas');
         
-        const imageDataUrl = canvas.toDataURL('image/png', 1.0);
-        console.log('Canvas converted to data URL');
-
-        const htmlContent = `
-          <div style="font-family: 'Segoe UI', sans-serif; margin: 10px 0;">
-            <div style="border: 1px solid #e1e1e1; border-radius: 6px; padding: 2px; background: white;">
-              <img 
-                src="${imageDataUrl}" 
-                alt="Dashboard" 
-                style="display: block; width: 100%; max-width: 800px; height: auto; margin: 0 auto;"
-              />
-            </div>
-          </div>
-        `;
-
-        await this.insertHtml(htmlContent);
+        // Get the Office context
+        await Word.run(async (context) => {
+          // Get the current selection
+          const range = context.document.getSelection();
+          
+          // Insert a paragraph break before the image
+          range.insertParagraph('', 'Before');
+          
+          // Convert canvas to base64 image
+          const imageData = canvas.toDataURL('image/png');
+          
+          // Insert the image
+          const image = range.insertInlinePictureFromBase64(imageData, 'Replace');
+          
+          // Set image width (in points)
+          image.width = 500;
+          
+          // Insert a paragraph break after the image
+          range.insertParagraph('', 'After');
+          
+          await context.sync();
+        });
+        
         console.log('Lightning component image inserted successfully');
       } catch (captureError) {
         console.error('Failed to capture Lightning component:', captureError);
