@@ -114,40 +114,47 @@ export const OfficeService = {
     try {
       console.log('Starting preview capture process...');
       
-      // First capture the preview as an image
-      const canvas = await html2canvas(element, {
-        logging: true,
-        useCORS: true,
-        allowTaint: true,
-        background: '#ffffff',
-        width: element.offsetWidth,
-        height: element.offsetHeight
-      });
-      
-      console.log('Preview captured as canvas');
-      
-      // Convert to data URL with high quality
-      const imageDataUrl = canvas.toDataURL('image/png', 1.0);
-      console.log('Canvas converted to data URL');
+      try {
+        // Wait a moment for any dynamic content to stabilize
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // First try to capture the preview as an image
+        const canvas = await html2canvas(element, {
+          logging: true,
+          useCORS: true,
+          allowTaint: true,
+          background: '#ffffff'
+        });
+        
+        console.log('Preview captured as canvas');
+        
+        // Convert to data URL with high quality
+        const imageDataUrl = canvas.toDataURL('image/png', 1.0);
+        console.log('Canvas converted to data URL');
 
-      // Insert the image with some styling
-      const htmlContent = `
-        <div style="font-family: 'Segoe UI', sans-serif; margin: 10px 0;">
-          <p style="color: #666; font-size: 11px; margin: 0 0 8px 0;">Dashboard Preview:</p>
-          <div style="border: 1px solid #e1e1e1; border-radius: 6px; padding: 2px; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-            <img 
-              src="${imageDataUrl}" 
-              alt="Dashboard Preview" 
-              style="display: block; width: 100%; max-width: 600px; height: auto; border-radius: 4px; margin: 0 auto;"
-            />
+        // Insert the image with some styling
+        const htmlContent = `
+          <div style="font-family: 'Segoe UI', sans-serif; margin: 10px 0;">
+            <p style="color: #666; font-size: 11px; margin: 0 0 8px 0;">Dashboard Preview:</p>
+            <div style="border: 1px solid #e1e1e1; border-radius: 6px; padding: 2px; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+              <img 
+                src="${imageDataUrl}" 
+                alt="Dashboard Preview" 
+                style="display: block; width: 100%; max-width: 600px; height: auto; border-radius: 4px; margin: 0 auto;"
+              />
+            </div>
           </div>
-        </div>
-      `;
+        `;
 
-      await this.insertHtml(htmlContent);
-      console.log('Preview image inserted successfully');
+        await this.insertHtml(htmlContent);
+        console.log('Preview image inserted successfully');
+      } catch (captureError) {
+        console.warn('Failed to capture preview as image, falling back to HTML insertion:', captureError);
+        // Fallback to direct HTML insertion
+        await this.insertAsHtml(element);
+      }
     } catch (error) {
-      console.error('Error capturing and inserting preview:', error);
+      console.error('Error inserting content:', error);
       throw error;
     }
   },
