@@ -122,25 +122,8 @@ export const OfficeService = {
         return;
       }
 
-      // Get the Lightning content at insertion time
-      const lightningContent = lightningContainer.innerHTML;
-      if (lightningContent) {
-        console.log('Capturing current Lightning content for insertion');
-        // Create a wrapper div with styling
-        const wrappedContent = `
-          <div style="font-family: 'Segoe UI', sans-serif; margin: 10px 0;">
-            <div style="border: 1px solid #e1e1e1; border-radius: 6px; padding: 2px; background: white;">
-              ${lightningContent}
-            </div>
-          </div>
-        `;
-        await this.insertHtml(wrappedContent);
-        console.log('Lightning content inserted successfully');
-        return;
-      }
-
-      // Fallback to capturing as image if content not available
       try {
+        console.log('Attempting to capture Lightning component as image');
         const canvas = await html2canvas(lightningContainer as HTMLElement, {
           logging: true,
           useCORS: true,
@@ -168,7 +151,8 @@ export const OfficeService = {
         await this.insertHtml(htmlContent);
         console.log('Lightning component image inserted successfully');
       } catch (captureError) {
-        console.warn('Failed to capture Lightning component, falling back to HTML:', captureError);
+        console.error('Failed to capture Lightning component:', captureError);
+        console.warn('Falling back to full HTML preview');
         await this.insertAsHtml(element);
       }
     } catch (error) {
@@ -238,8 +222,8 @@ export const OfficeService = {
                 const container = document.getElementById(containerId);
                 if (container) {
                   container.setAttribute('data-lightning-ready', 'true');
-                  // Store the component reference
-                  container.setAttribute('data-lightning-cmp', JSON.stringify({ id: cmp.getGlobalId() }));
+                  // Store the container ID for later use
+                  container.setAttribute('data-container-id', containerId);
                   resolve();
                 }
               } else {
