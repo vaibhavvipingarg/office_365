@@ -237,7 +237,7 @@ export const OfficeService = {
             }
           );
         },
-        baseUrl,
+        'https://sdb42com6.test13.lightning.pc-rnd.force.com',
         accessToken
       );
     } catch (error) {
