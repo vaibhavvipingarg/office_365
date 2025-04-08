@@ -533,19 +533,26 @@ export const OfficeService = {
         "tableau_einstein:tableauEinsteinApp",
         () => {
           console.log('Lightning app initialized, creating component...');
+          
+          // Check if this is a metric or dashboard based on the ID format
+          const isMetric = /^1HU/.test(dashboardId);
+          const componentName = isMetric ? "analytics_embedding:metric3p" : "analytics_embedding:dashboard3p";
+          const componentAttributes = {
+            height: 300,
+            idOrApiName: dashboardId,
+            allowTransparency: true,
+            showHeader: false,
+            showSharing: false,
+            ...(isMetric && { isSubmetric: true })
+          };
+
           window.$Lightning.createComponent(
-            "analytics_embedding:dashboard3p",
-            {
-              height: 300,
-              idOrApiName: dashboardId,
-              allowTransparency: true,
-              showHeader: false,
-              showSharing: false
-            },
+            componentName,
+            componentAttributes,
             containerId,
             (cmp: any) => {
               if (cmp) {
-                console.log("Lightning component created successfully");
+                console.log(`Lightning ${isMetric ? 'metric' : 'dashboard'} component created successfully`);
                 // Store the component reference and mark as ready
                 const container = document.getElementById(containerId);
                 if (container) {
@@ -555,8 +562,8 @@ export const OfficeService = {
                   resolve();
                 }
               } else {
-                console.error("Failed to create Lightning component");
-                reject(new Error("Failed to create Lightning component"));
+                console.error(`Failed to create Lightning ${isMetric ? 'metric' : 'dashboard'} component`);
+                reject(new Error(`Failed to create Lightning ${isMetric ? 'metric' : 'dashboard'} component`));
               }
             }
           );
