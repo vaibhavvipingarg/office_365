@@ -193,7 +193,7 @@ export const OfficeService = {
       console.log('Creating Lightning component with origin:', targetOrigin);
 
       window.$Lightning.use(
-        "unifiedAnalytics:unifiedAnalyticsApp",
+        "tableau_einstein:tableauEinsteinApp",
         () => {
           console.log('Lightning app initialized, creating component...');
           window.$Lightning.createComponent(
