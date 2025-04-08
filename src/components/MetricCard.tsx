@@ -27,6 +27,7 @@ const styles = mergeStyleSets({
     borderLeft: `3px solid ${theme.palette.tealLight}`,
     transition: 'all 0.2s ease',
     cursor: 'pointer',
+    maxWidth: '400px',
     ':hover': {
       boxShadow: '0 2px 4px rgba(0, 0, 0, 0.15)',
       transform: 'translateY(-1px)'
@@ -115,6 +116,24 @@ const styles = mergeStyleSets({
     right: 6,
     color: theme.palette.themePrimary,
     fontSize: 12
+  },
+  imageContainer: {
+    marginBottom: '8px',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    maxHeight: '200px',
+    overflow: 'hidden',
+    backgroundColor: theme.palette.neutralLighterAlt,
+    borderRadius: '4px',
+    border: `1px solid ${theme.palette.neutralLight}`
+  },
+  metricImage: {
+    maxWidth: '200px',
+    maxHeight: '200px',
+    width: 'auto',
+    height: 'auto',
+    objectFit: 'contain'
   }
 });
 
@@ -210,15 +229,11 @@ export const MetricCard: React.FC<MetricCardProps> = ({
 
       {/* Preview Image from base64 data */}
       {item.metadata?.downloadFile?.base64EncodedData && (
-        <div style={{ marginBottom: '8px' }}>
+        <div className={styles.imageContainer}>
           <img 
             src={`data:${item.metadata.downloadFile.fileType || 'image/png'};base64,${item.metadata.downloadFile.base64EncodedData}`}
             alt="Metric Preview"
-            style={{ 
-              width: '100%',
-              borderRadius: '4px',
-              border: `1px solid ${theme.palette.neutralLight}`
-            }}
+            className={styles.metricImage}
           />
         </div>
       )}
