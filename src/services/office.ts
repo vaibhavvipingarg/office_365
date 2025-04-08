@@ -136,12 +136,19 @@ export const OfficeService = {
         const imageDataUrl = canvas.toDataURL('image/png', 1.0);
         console.log('Canvas converted to data URL');
 
+        // Get the dashboard title from the preview card
+        const titleElement = element.querySelector('.preview-card .ms-Text');
+        const title = titleElement?.textContent || 'Dashboard';
+
         const htmlContent = `
           <div style="font-family: 'Segoe UI', sans-serif; margin: 10px 0;">
-            <div style="border: 1px solid #e1e1e1; border-radius: 6px; padding: 2px; background: white;">
+            <div style="border: 1px solid #e1e1e1; border-radius: 6px; padding: 15px; background: white;">
+              <div style="font-size: 18px; font-weight: 600; color: #0078d4; margin-bottom: 10px;">
+                ${title}
+              </div>
               <img 
                 src="${imageDataUrl}" 
-                alt="Dashboard" 
+                alt="${title}" 
                 style="display: block; width: 100%; max-width: 800px; height: auto; margin: 0 auto;"
               />
             </div>
