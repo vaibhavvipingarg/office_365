@@ -143,10 +143,27 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
         throw new Error('Preview element not found');
       }
 
-      // For dashboards, wait a bit to ensure Lightning component is fully rendered
+      // For dashboards, wait for the viz container to be present
       if (!selectedItem.hasOwnProperty('id')) {
         // This is a dashboard
-        await new Promise(resolve => setTimeout(resolve, 2000)); // Wait for Lightning to stabilize
+        let attempts = 0;
+        const maxAttempts = 30; // 30 seconds max wait time
+        
+        while (attempts < maxAttempts) {
+          const vizContainer = document.querySelector('.viz-container');
+          if (vizContainer) {
+            break;
+          }
+          await new Promise(resolve => setTimeout(resolve, 1000)); // Check every second
+          attempts++;
+        }
+        
+        if (attempts === maxAttempts) {
+          console.warn('Timed out waiting for dashboard visualization to load');
+        } else {
+          // Give a small additional delay for final render
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
       }
 
       const canvas = await html2canvas(previewElement, {
