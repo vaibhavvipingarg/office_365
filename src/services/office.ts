@@ -81,6 +81,7 @@ export const OfficeService = {
       // Format the content based on the host application
       const hostType = this.getHostType();
       let formattedContent;
+      let coercionType = Office.CoercionType.Html;
 
       switch (hostType) {
         case 'Word':
@@ -88,6 +89,7 @@ export const OfficeService = {
           break;
         case 'PowerPoint':
           formattedContent = this.formatContentForPowerPoint(content);
+          coercionType = Office.CoercionType.Text; // PowerPoint supports text insertion
           break;
         case 'Outlook':
           formattedContent = this.formatContentForOutlook(content);
@@ -117,7 +119,7 @@ export const OfficeService = {
           // For Word and PowerPoint, we use the document API
           Office.context.document.setSelectedDataAsync(
             formattedContent,
-            { coercionType: Office.CoercionType.Html },
+            { coercionType },
             (result) => {
               if (result.status === Office.AsyncResultStatus.Succeeded) {
                 console.log('Content inserted successfully');
@@ -450,26 +452,34 @@ export const OfficeService = {
   },
 
   formatContentForPowerPoint(content: any): string {
-    // Format content specifically for PowerPoint
-    // This will create a more presentation-friendly layout
-    const title = content.title || 'Salesforce Data';
-    const description = content.description || '';
-    const data = content.data || {};
+    // Format content specifically for PowerPoint as plain text
+    // Since we're using text coercion, we'll create a simpler text-based layout
+    const title = content.title || content.MasterLabel || content.Name || 'Salesforce Data';
+    const description = content.description || content.Description || '';
+    let textContent = `${title}\n\n`;
 
-    return `
-      <div style="font-family: 'Segoe UI', sans-serif; padding: 20px;">
-        <h2 style="color: #2b579a; font-size: 28px; margin-bottom: 15px;">${title}</h2>
-        ${description ? `<p style="font-size: 18px; color: #333; margin-bottom: 20px;">${description}</p>` : ''}
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
-          ${Object.entries(data).map(([key, value]) => `
-            <div style="background: #f5f5f5; padding: 15px; border-radius: 8px;">
-              <h3 style="color: #2b579a; margin: 0 0 10px 0;">${key}</h3>
-              <p style="font-size: 16px; margin: 0;">${value}</p>
-            </div>
-          `).join('')}
-        </div>
-      </div>
-    `;
+    if (description) {
+      textContent += `${description}\n\n`;
+    }
+
+    // If it's a metric
+    if (content.hasOwnProperty('id')) {
+      textContent += `Type: ${content.type || 'Metric'}\n`;
+      textContent += `Creator: ${content.creatorName || 'Unknown'}\n`;
+      textContent += `Created: ${this.formatDate(content.createdDate)}\n`;
+      textContent += `Workspace: ${content.namespace || 'Default'}\n`;
+      textContent += `Metric ID: ${content.id || 'Unknown'}\n`;
+    }
+    // If it's a dashboard
+    else {
+      textContent += `Type: ${content.AnalyticsWorkspace?.MasterLabel || 'Dashboard'}\n`;
+      textContent += `Creator: ${content.CreatedBy?.Name || 'Unknown'}\n`;
+      textContent += `Created: ${this.formatDate(content.CreatedDate)}\n`;
+      textContent += `Workspace: ${content.AnalyticsWorkspace?.MasterLabel || 'Default'}\n`;
+      textContent += `Dashboard ID: ${content.Id || 'Unknown'}\n`;
+    }
+
+    return textContent;
   },
 
   formatContentForOutlook(content: any): string {
