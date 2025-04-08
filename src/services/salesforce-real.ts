@@ -283,7 +283,7 @@ export class SalesforceAuth {
       console.log(`Making API call to ${instance.instanceUrl}`);
       
       const response = await fetch(`${instance.instanceUrl}/services/data/v64.0/query?q=${encodeURIComponent(
-        'SELECT Id, DeveloperName, CreatedBy.Name, Description, CreatedDate, MasterLabel, AnalyticsWorkspaceId, AnalyticsWorkspace.MasterLabel FROM AnalyticsDashboard LIMIT 5'
+        'SELECT Id, DeveloperName, CreatedBy.Name, Description, CreatedDate, MasterLabel, AnalyticsWorkspaceId, AnalyticsWorkspace.MasterLabel FROM AnalyticsDashboard ORDER BY LastModifiedDate DESC LIMIT 5'
       )}`, {
         method: 'GET',
         headers: {
