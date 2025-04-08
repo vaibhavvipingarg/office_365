@@ -234,59 +234,29 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
   const PreviewCard = ({ item }: { item: any }) => {
     const theme = getTheme();
     const [isLightningLoaded, setIsLightningLoaded] = useState(false);
-    const containerId = `preview-lightning-${item.Id || item.DeveloperName || 'unknown'}`;
+    const containerId = `preview-lightning-${item.DeveloperName || item.id || 'unknown'}`;
     const previewRef = useRef<HTMLDivElement>(null);
     
     useEffect(() => {
       let mounted = true;
       const cleanupTimeout: NodeJS.Timeout | null = null;
       
-      const accessToken = localStorage.getItem('sf_access_token');
-      if (accessToken) {
-        // Initialize Lightning component based on item type
-        if (item.Id?.startsWith('1HU')) {
-          // For metrics
-          OfficeService.initializeLightningComponent(
-            containerId, 
-            'analytics_embedding:metric3p', 
-            accessToken,
-            { 
-              isSubmetric: true,
-              idOrDevName: item.Id
-            }
-          )
-          .then(() => {
-            if (mounted) {
-              setIsLightningLoaded(true);
-            }
-          })
-          .catch(error => {
-            console.error('Error initializing Lightning component for metric:', error);
-            if (mounted) {
-              setIsLightningLoaded(false);
-            }
-          });
-        } else if (item.DeveloperName) {
-          // For dashboards
-          OfficeService.initializeLightningComponent(
-            containerId, 
-            'analytics_embedding:dashboard3p', 
-            accessToken,
-            {
-              idOrDevName: item.DeveloperName
-            }
-          )
-          .then(() => {
-            if (mounted) {
-              setIsLightningLoaded(true);
-            }
-          })
-          .catch(error => {
-            console.error('Error initializing Lightning component for dashboard:', error);
-            if (mounted) {
-              setIsLightningLoaded(false);
-            }
-          });
+      // Only initialize Lightning component for dashboards
+      if (!item.hasOwnProperty('id') && item.DeveloperName) {
+        const accessToken = localStorage.getItem('sf_access_token');
+        if (accessToken) {
+          OfficeService.initializeLightningComponent(containerId, item.DeveloperName, accessToken)
+            .then(() => {
+              if (mounted) {
+                setIsLightningLoaded(true);
+              }
+            })
+            .catch(error => {
+              console.error('Error initializing Lightning component:', error);
+              if (mounted) {
+                setIsLightningLoaded(false);
+              }
+            });
         }
       }
       
@@ -304,7 +274,7 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
           console.warn('Error during Lightning component cleanup:', error);
         }
       };
-    }, [item.DeveloperName, item.Id, containerId]);
+    }, [item.DeveloperName, containerId]);
     
     const formatDate = (dateString: string) => {
       if (!dateString) return 'Unknown';
@@ -316,7 +286,7 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
     };
     
     // Determine if this is a metric or dashboard
-    const isMetric = item.Id?.startsWith('1HU');
+    const isMetric = item.hasOwnProperty('id') && item.hasOwnProperty('metadata');
 
     if (isMetric) {
       // Metric Preview
@@ -346,29 +316,30 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
               </div>
             )}
 
-            {/* Lightning Component Container for Metric */}
-            <div style={{ 
-              minHeight: 200,
-              maxHeight: 300,
-              border: `1px solid ${theme.palette.neutralLight}`,
-              borderRadius: 4,
-              padding: 8,
-              backgroundColor: theme.palette.white,
-              position: 'relative',
-              overflow: 'hidden'
-            }}>
-              <div id={containerId}>
-                {!isLightningLoaded && (
-                  <Stack 
-                    horizontalAlign="center" 
-                    verticalAlign="center" 
-                    styles={{ root: { height: 200 } }}
-                  >
-                    <Spinner size={SpinnerSize.large} label="Loading metric..." />
-                  </Stack>
-                )}
+            {item.metadata?.downloadFile?.base64EncodedData && (
+              <div style={{ 
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                maxHeight: 200,
+                overflow: 'hidden',
+                backgroundColor: theme.palette.neutralLighterAlt,
+                borderRadius: 4,
+                border: `1px solid ${theme.palette.neutralLight}`
+              }}>
+                <img 
+                  src={`data:${item.metadata.downloadFile.fileType || 'image/png'};base64,${item.metadata.downloadFile.base64EncodedData}`}
+                  alt="Metric Preview"
+                  style={{
+                    maxWidth: 200,
+                    maxHeight: 200,
+                    width: 'auto',
+                    height: 'auto',
+                    objectFit: 'contain'
+                  }}
+                />
               </div>
-            </div>
+            )}
 
             <Stack tokens={{ childrenGap: 8 }}>
               {item.metadata?.asset?.metricFilterSummary && (
