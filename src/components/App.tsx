@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { DefaultButton, Stack, Text, PrimaryButton, Spinner, SpinnerSize, MessageBar, MessageBarType, Image, ImageFit, Dialog, DialogType, Icon, getTheme, TextField, Pivot, PivotItem } from '@fluentui/react';
+import React, { useState, useEffect, useRef } from 'react';
+import { DefaultButton, Stack, Text, PrimaryButton, Spinner, SpinnerSize, MessageBar, MessageBarType, Image, ImageFit, Dialog, DialogType, Icon, getTheme, TextField, Pivot, PivotItem, DialogFooter } from '@fluentui/react';
 import { SalesforceAuth } from '../services/salesforce-real';
 import { OfficeService } from '../services/office';
 import { SalesforceDataCard } from './SalesforceDataCard';
 import { MetricCard } from './MetricCard';
+import html2canvas from 'html2canvas';
 
 interface AppProps {
   isLocalMode?: boolean;
@@ -133,49 +134,35 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
     return `https://place-hold.it/600x300/0078D4/FFFFFF/bold?text=${companyName}`;
   };
 
-  const insertSelectedItemIntoDocument = async () => {
+  const handleInsertClick = async () => {
     if (!selectedItem) return;
     
-    setLoading(true);
-    setError(null);
-    
     try {
-      // Get the preview card element
-      const previewElement = document.getElementById('preview-card');
+      const previewElement = document.querySelector('.preview-card') as HTMLDivElement;
       if (!previewElement) {
         throw new Error('Preview element not found');
       }
 
-      // For dashboards, wait for the Lightning component to be ready
-      if (!selectedItem.hasOwnProperty('id') && selectedItem.DeveloperName) {
-        const lightningContainer = previewElement.querySelector('[id^="preview-lightning-"]');
-        if (lightningContainer) {
-          // Wait for the ready attribute to be set (max 5 seconds)
-          let attempts = 0;
-          while (!lightningContainer.getAttribute('data-lightning-ready') && attempts < 50) {
-            await new Promise(resolve => setTimeout(resolve, 100));
-            attempts++;
-          }
-        }
-      }
+      const canvas = await html2canvas(previewElement, {
+        background: 'transparent',
+        width: previewElement.offsetWidth,
+        height: previewElement.offsetHeight,
+        logging: false,
+        useCORS: true
+      });
 
-      // Capture and insert the preview
-      await OfficeService.insertImageFromElement(previewElement);
+      const imageData = {
+        ...selectedItem,
+        capturedImage: canvas.toDataURL('image/png')
+      };
 
-      // Close the preview dialog first
+      await OfficeService.insertContent(imageData);
       setShowPreview(false);
-      
-      // Clear selection after a short delay to ensure proper cleanup
-      setTimeout(() => {
-        setSelectedItem(null);
-      }, 100);
-
-      setError(null);
-    } catch (err) {
-      console.error('Error inserting content:', err);
-      setError('Failed to insert content into document');
-    } finally {
-      setLoading(false);
+    } catch (error) {
+      console.error('Failed to capture preview:', error);
+      // Fall back to regular content insertion
+      await OfficeService.insertContent(selectedItem);
+      setShowPreview(false);
     }
   };
 
@@ -184,6 +171,7 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
     const theme = getTheme();
     const [isLightningLoaded, setIsLightningLoaded] = useState(false);
     const containerId = `preview-lightning-${item.DeveloperName || item.id || 'unknown'}`;
+    const previewRef = useRef<HTMLDivElement>(null);
     
     useEffect(() => {
       let mounted = true;
@@ -246,125 +234,35 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
     
     // Determine if this is a dashboard or metric
     const isMetric = item.hasOwnProperty('id') && item.hasOwnProperty('label');
-    
+
     return (
-      <Stack 
-        id="preview-card"
-        tokens={{ childrenGap: 12 }}
-        styles={{
-          root: {
-            padding: 16,
-            backgroundColor: theme.palette.white,
-            borderRadius: 4,
-            border: `1px solid ${theme.palette.neutralLight}`,
-            boxShadow: theme.effects.elevation4
-          }
-        }}
-      >
-        {isMetric ? (
-          // Metric Preview
-          <>
-            <Stack horizontal horizontalAlign="space-between" verticalAlign="center">
-              <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 8 }}>
-                <Icon iconName={getMetricIcon()} style={{ fontSize: 20, color: theme.palette.themePrimary }} />
-                <Text variant="large" styles={{ root: { fontWeight: 600 } }}>
-                  {item.label || 'Unknown Metric'}
-                </Text>
-              </Stack>
-              <Text variant="small" style={{ color: theme.palette.neutralSecondary }}>
-                {item.type || 'Metric'}
-              </Text>
-            </Stack>
-            
-            {item.description && (
-              <Text variant="medium">
-                {item.description}
-              </Text>
-            )}
-            
-            <Stack tokens={{ childrenGap: 8 }}>
-              <Stack horizontal horizontalAlign="space-between">
-                <Text variant="small">Creator:</Text>
-                <Text variant="small">{item.creatorName || 'Unknown'}</Text>
-              </Stack>
-              
-              <Stack horizontal horizontalAlign="space-between">
-                <Text variant="small">Created:</Text>
-                <Text variant="small">{formatDate(item.createdDate)}</Text>
-              </Stack>
-              
-              <Stack horizontal horizontalAlign="space-between">
-                <Text variant="small">Workspace:</Text>
-                <Text variant="small">{item.namespace || 'Default'}</Text>
-              </Stack>
-            </Stack>
-            
-            <Stack 
-              styles={{
-                root: {
-                  borderTop: `1px solid ${theme.palette.neutralLight}`,
-                  paddingTop: 12
-                }
-              }}
-            >
-              <Text variant="small" style={{ color: theme.palette.neutralSecondary }}>
-                Metric ID: {item.id || 'Unknown'}
-              </Text>
-            </Stack>
-          </>
-        ) : (
-          // Dashboard Preview - Show Lightning Component
-          <>
-            <Stack horizontal horizontalAlign="space-between" verticalAlign="center">
-              <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 8 }}>
-                <Icon iconName={getDashboardIcon()} style={{ fontSize: 20, color: theme.palette.themePrimary }} />
-                <Text variant="large" styles={{ root: { fontWeight: 600 } }}>
-                  {item.MasterLabel || item.Name || 'Unknown Dashboard'}
-                </Text>
-              </Stack>
-              <Text variant="small" style={{ color: theme.palette.neutralSecondary }}>
-                {item.AnalyticsWorkspace ? item.AnalyticsWorkspace.MasterLabel : 'Dashboard'}
-              </Text>
-            </Stack>
-            
-            {/* Lightning Component Container */}
-            <div style={{ 
-              minHeight: 300, 
-              border: `1px solid ${theme.palette.neutralLight}`,
-              borderRadius: 4,
-              padding: 8,
-              backgroundColor: theme.palette.white,
-              position: 'relative'
-            }}>
-              <div id={containerId}>
-                {!isLightningLoaded && (
-                  <Stack 
-                    horizontalAlign="center" 
-                    verticalAlign="center" 
-                    styles={{ root: { height: 300 } }}
-                  >
-                    <Spinner size={SpinnerSize.large} label="Loading dashboard..." />
-                  </Stack>
-                )}
-              </div>
+      <div ref={previewRef} className="preview-card" style={{ padding: '20px', maxWidth: '600px' }}>
+        <Stack tokens={{ childrenGap: 20 }}>
+          <Text variant="xLarge">{item.metadata?.label || item.title}</Text>
+          <Text variant="large">{item.value}</Text>
+          {item.metadata?.insightBox && (
+            <div className="insight-box" style={{ padding: '10px', backgroundColor: '#f3f3f3', borderRadius: '4px' }}>
+              <Text>{item.metadata.insightBox}</Text>
             </div>
-            
-            <Stack 
-              styles={{
-                root: {
-                  borderTop: `1px solid ${theme.palette.neutralLight}`,
-                  paddingTop: 12,
-                  marginTop: 12
-                }
-              }}
-            >
-              <Text variant="small" style={{ color: theme.palette.neutralSecondary }}>
-                Dashboard ID: {item.Id || 'Unknown'}
-              </Text>
-            </Stack>
-          </>
-        )}
-      </Stack>
+          )}
+          {item.metadata?.previewImage && (
+            <img 
+              src={`data:image/png;base64,${item.metadata.previewImage}`} 
+              alt="Metric Preview" 
+              style={{ maxWidth: '100%', height: 'auto' }}
+            />
+          )}
+          <Stack horizontal tokens={{ childrenGap: 10 }}>
+            <Text>Time Range: Last 30 days</Text>
+            {item.metadata?.createdDate && (
+              <Text>Created: {new Date(item.metadata.createdDate).toLocaleDateString()}</Text>
+            )}
+            {item.metadata?.lastModifiedDate && (
+              <Text>Last Modified: {new Date(item.metadata.lastModifiedDate).toLocaleDateString()}</Text>
+            )}
+          </Stack>
+        </Stack>
+      </div>
     );
   };
 
@@ -539,38 +437,17 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
             hidden={!showPreview}
             onDismiss={() => setShowPreview(false)}
             dialogContentProps={{
-              type: DialogType.normal,
-              title: selectedItem ? `Preview: ${selectedItem.MasterLabel || selectedItem.label || selectedItem.Name || selectedItem.name}` : 'Preview',
-              subText: 'This is how the content will appear in your Office document'
+              title: 'Metric Preview'
             }}
             modalProps={{
-              isBlocking: false,
-              styles: { main: { maxWidth: 650 } }
+              styles: { main: { maxWidth: 700 } }
             }}
           >
-            {selectedItem && (
-              <Stack tokens={{ childrenGap: 15 }}>
-                <Text variant="medium">
-                  The following content would be inserted into your document:
-                </Text>
-                
-                <Stack>
-                  <PreviewCard item={selectedItem} />
-                </Stack>
-                
-                <Stack horizontal tokens={{ childrenGap: 10 }} horizontalAlign="end">
-                  <DefaultButton 
-                    text="Cancel" 
-                    onClick={() => setShowPreview(false)} 
-                  />
-                  <PrimaryButton 
-                    text="Insert into Document" 
-                    onClick={insertSelectedItemIntoDocument}
-                    iconProps={{ iconName: 'Add' }}
-                  />
-                </Stack>
-              </Stack>
-            )}
+            {selectedItem && <PreviewCard item={selectedItem} />}
+            <DialogFooter>
+              <PrimaryButton onClick={handleInsertClick} text="Insert into Document" />
+              <DefaultButton onClick={() => setShowPreview(false)} text="Cancel" />
+            </DialogFooter>
           </Dialog>
         </Stack>
       )}
