@@ -147,7 +147,7 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
       }
 
       // For dashboards, wait a moment to ensure the Lightning component is fully rendered
-      if (!selectedItem.hasOwnProperty('id') && selectedItem.Id) {
+      if (!selectedItem.hasOwnProperty('id') && selectedItem.DeveloperName) {
         await new Promise(resolve => setTimeout(resolve, 2000));
       }
 
@@ -168,17 +168,17 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
   const PreviewCard = ({ item }: { item: any }) => {
     const theme = getTheme();
     const [isLightningLoaded, setIsLightningLoaded] = useState(false);
-    // Use a stable ID based on the dashboard ID
-    const containerId = `preview-lightning-${item.Id || item.id || 'unknown'}`;
+    // Use DeveloperName for the container ID
+    const containerId = `preview-lightning-${item.DeveloperName || item.id || 'unknown'}`;
     
     useEffect(() => {
       let mounted = true;
       
       // Only initialize Lightning component for dashboards
-      if (!item.hasOwnProperty('id') && item.Id) {
+      if (!item.hasOwnProperty('id') && item.DeveloperName) {
         const accessToken = localStorage.getItem('sf_access_token');
         if (accessToken) {
-          OfficeService.initializeLightningComponent(containerId, item.Id, accessToken)
+          OfficeService.initializeLightningComponent(containerId, item.DeveloperName, accessToken)
             .then(() => {
               if (mounted) {
                 setIsLightningLoaded(true);
@@ -202,7 +202,7 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
           container.innerHTML = '';
         }
       };
-    }, [item.Id, containerId]); // Only depend on the item.Id, not the entire item
+    }, [item.DeveloperName, containerId]); // Only depend on the DeveloperName, not the entire item
     
     const getDashboardIcon = () => {
       return 'ViewDashboard';
