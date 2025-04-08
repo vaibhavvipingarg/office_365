@@ -88,8 +88,34 @@ export const OfficeService = {
           formattedContent = this.formatContentAsHtml(content);
           break;
         case 'PowerPoint':
-          formattedContent = this.formatContentForPowerPoint(content);
-          coercionType = Office.CoercionType.Text; // PowerPoint supports text insertion
+          // For PowerPoint, if we have a captured image, use it directly
+          if (content.capturedImage) {
+            formattedContent = content.capturedImage;
+            coercionType = Office.CoercionType.Image;
+          } else {
+            // Try to capture the content as an image first
+            try {
+              const element = document.querySelector('[id^="preview-lightning-"]');
+              if (element) {
+                const canvas = await html2canvas(element as HTMLElement, {
+                  logging: true,
+                  useCORS: true,
+                  allowTaint: true,
+                  background: '#ffffff'
+                });
+                formattedContent = canvas.toDataURL('image/png', 1.0);
+                coercionType = Office.CoercionType.Image;
+              } else {
+                // Fallback to text if no image can be captured
+                formattedContent = this.formatContentForPowerPoint(content);
+                coercionType = Office.CoercionType.Text;
+              }
+            } catch (error) {
+              console.error('Failed to capture content as image:', error);
+              formattedContent = this.formatContentForPowerPoint(content);
+              coercionType = Office.CoercionType.Text;
+            }
+          }
           break;
         case 'Outlook':
           formattedContent = this.formatContentForOutlook(content);
