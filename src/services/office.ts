@@ -20,10 +20,7 @@ declare global {
         containerId: string,
         callback: (cmp: any) => void
       ) => void;
-      destroy: (component: any) => void;
-    };
-    Office: any;
-    Word: any;
+    }
   }
 }
 
@@ -131,42 +128,32 @@ export const OfficeService = {
           logging: true,
           useCORS: true,
           allowTaint: true,
-          background: '#ffffff',
-          width: lightningContainer.clientWidth,
-          height: lightningContainer.clientHeight
+          background: '#ffffff'
         });
         
         console.log('Lightning component captured as canvas');
         
-        // Get the Office context
-        await Word.run(async (context) => {
-          // Get the current selection
-          const range = context.document.getSelection();
-          
-          // Insert a paragraph break before the image
-          range.insertParagraph('', 'Before');
-          
-          // Convert canvas to base64 image
-          const imageData = canvas.toDataURL('image/png');
-          
-          // Insert the image
-          const image = range.insertInlinePictureFromBase64(imageData, 'Replace');
-          
-          // Set image width to match the container width
-          const containerWidth = lightningContainer.clientWidth;
-          const scaleFactor = 0.75; // Reduce size slightly to fit better in document
-          image.width = containerWidth * scaleFactor;
-          
-          // Insert a paragraph break after the image
-          range.insertParagraph('', 'After');
-          
-          await context.sync();
-        });
-        
+        const imageDataUrl = canvas.toDataURL('image/png', 1.0);
+        console.log('Canvas converted to data URL');
+
+        const htmlContent = `
+          <div style="font-family: 'Segoe UI', sans-serif; margin: 10px 0;">
+            <div style="border: 1px solid #e1e1e1; border-radius: 6px; padding: 2px; background: white;">
+              <img 
+                src="${imageDataUrl}" 
+                alt="Dashboard" 
+                style="display: block; width: 100%; max-width: 800px; height: auto; margin: 0 auto;"
+              />
+            </div>
+          </div>
+        `;
+
+        await this.insertHtml(htmlContent);
         console.log('Lightning component image inserted successfully');
       } catch (captureError) {
         console.error('Failed to capture Lightning component:', captureError);
-        throw captureError;
+        console.warn('Falling back to full HTML preview');
+        await this.insertAsHtml(element);
       }
     } catch (error) {
       console.error('Error inserting content:', error);
@@ -174,17 +161,40 @@ export const OfficeService = {
     }
   },
 
-  initializeLightningComponent(containerId: string, dashboardId: string, accessToken: string): Promise<any> {
+  initializeLightningComponent(containerId: string, dashboardId: string, accessToken: string): Promise<void> {
+    console.log('Initializing Lightning component...', { containerId, dashboardId });
+    
     return new Promise((resolve, reject) => {
-      this.createLightningComponent(containerId, dashboardId, accessToken, resolve, reject);
+      try {
+        // Load Lightning Out script if not already loaded
+        if (!document.querySelector('script[src*="lightning.out.js"]')) {
+          const script = document.createElement('script');
+          // Add timestamp to prevent caching
+          script.src = `https://sdb42com6.test13.my.pc-rnd.salesforce.com/lightning/lightning.out.js?_=${Date.now()}`;
+          script.onload = () => {
+            this.createLightningComponent(containerId, dashboardId, accessToken, resolve, reject);
+          };
+          script.onerror = (error) => {
+            console.error('Failed to load Lightning Out script:', error);
+            reject(error);
+          };
+          document.head.appendChild(script);
+        } else {
+          this.createLightningComponent(containerId, dashboardId, accessToken, resolve, reject);
+        }
+      } catch (error) {
+        console.error('Error initializing Lightning Out:', error);
+        reject(error);
+      }
     });
   },
 
+  // Helper method to create the Lightning component
   createLightningComponent(
     containerId: string, 
     dashboardId: string, 
     accessToken: string,
-    resolve: (cmp: any) => void,
+    resolve: () => void,
     reject: (error: Error) => void
   ): void {
     if (typeof window.$Lightning !== 'undefined') {
@@ -212,7 +222,9 @@ export const OfficeService = {
                 const container = document.getElementById(containerId);
                 if (container) {
                   container.setAttribute('data-lightning-ready', 'true');
-                  resolve(cmp);
+                  // Store the container ID for later use
+                  container.setAttribute('data-container-id', containerId);
+                  resolve();
                 }
               } else {
                 console.error("Failed to create Lightning component");

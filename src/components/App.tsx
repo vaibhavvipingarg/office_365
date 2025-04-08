@@ -181,16 +181,14 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
     
     useEffect(() => {
       let mounted = true;
-      let lightningComponent: any = null;
       
       // Only initialize Lightning component for dashboards
       if (!item.hasOwnProperty('id') && item.DeveloperName) {
         const accessToken = localStorage.getItem('sf_access_token');
         if (accessToken) {
           OfficeService.initializeLightningComponent(containerId, item.DeveloperName, accessToken)
-            .then((cmp) => {
+            .then(() => {
               if (mounted) {
-                lightningComponent = cmp;
                 setIsLightningLoaded(true);
               }
             })
@@ -206,13 +204,17 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
       // Cleanup function
       return () => {
         mounted = false;
-        if (lightningComponent) {
-          try {
-            // Destroy the Lightning component if it exists
-            window.$Lightning.destroy(lightningComponent);
-          } catch (error) {
-            console.warn('Error destroying Lightning component:', error);
+        // Safely cleanup the Lightning component if it exists
+        try {
+          const container = document.getElementById(containerId);
+          if (container) {
+            // Instead of clearing innerHTML, just remove the container's content
+            while (container.firstChild) {
+              container.removeChild(container.firstChild);
+            }
           }
+        } catch (error) {
+          console.warn('Error during Lightning component cleanup:', error);
         }
       };
     }, [item.DeveloperName, containerId]); // Only depend on the DeveloperName, not the entire item
