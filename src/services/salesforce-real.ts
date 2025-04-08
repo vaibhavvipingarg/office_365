@@ -453,7 +453,7 @@ export class SalesforceAuth {
           data.followedAssets.map(async (metric: any) => {
             try {
               console.log(`Fetching metadata for metric ${metric.id}`);
-              const metadataResponse = await fetch(`${instance.instanceUrl}/services/data/v64.0/tableau/download?metadataOnly=true`, {
+              const metadataResponse = await fetch(`${instance.instanceUrl}/services/data/v64.0/tableau/download?metadataOnly=false`, {
                 method: 'POST',
                 headers: {
                   'Authorization': `Bearer ${instance.accessToken}`,
@@ -475,20 +475,40 @@ export class SalesforceAuth {
               const metadata = await metadataResponse.json();
               console.log(`Received metadata for metric ${metric.id}:`, metadata);
 
-              // Return a simplified object with just what we need
+              // Return a simplified object with the metric data
+              return {
+                id: metric.id,
+                name: metric.name,
+                label: metric.label || metadata.root?.asset?.label,
+                hasError: false,
+                metadata: metadata,
+                metricValue: metadata.root?.asset?.metricValue,
+                metricChange: metadata.root?.asset?.metricChange,
+                metricSentiment: metadata.root?.asset?.metricSentiment,
+                metricInsight: metadata.root?.asset?.metricInsight,
+                metricFilterSummary: metadata.root?.asset?.metricFilterSummary,
+                createdDate: metadata.root?.asset?.createdDate,
+                lastModifiedDate: metadata.root?.asset?.lastModifiedDate,
+                createdBy: metadata.root?.asset?.createdBy,
+                lastModifiedBy: metadata.root?.asset?.lastModifiedBy
+              };
+            } catch (error) {
+              console.warn(`Failed to fetch metadata for metric ${metric.id}:`, error);
+              // Return the metric with error flag but keep basic info
               return {
                 id: metric.id,
                 name: metric.name,
                 label: metric.label,
-                metadata: metadata // This contains the detailed metadata from the second API call
+                hasError: true,
+                errorMessage: error instanceof Error ? error.message : 'Failed to load metric details',
+                metadata: null
               };
-            } catch (error) {
-              console.warn(`Failed to fetch metadata for metric ${metric.id}:`, error);
-              return metric;
             }
           })
         );
-        return metricsWithMetadata;
+
+        // Filter out completely failed metrics but keep ones with partial data
+        return metricsWithMetadata.filter(metric => metric !== null);
       }
       
       return [];
