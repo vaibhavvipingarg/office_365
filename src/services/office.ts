@@ -213,10 +213,11 @@ export const OfficeService = {
         () => {
           console.log('Lightning app initialized, creating component...');
           window.$Lightning.createComponent(
-            "analytics_embedding:dashboard3p",
+            "analytics_embedding:metric3p",
             {
               height: 300,
-              idOrApiName: dashboardId,
+              width: 200,
+              idOrApiName: "1HUUA0000001F6f4AE",
               allowTransparency: true,
               showHeader: false,
               showSharing: false
