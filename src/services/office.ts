@@ -114,43 +114,49 @@ export const OfficeService = {
     try {
       console.log('Starting preview capture process...');
       
+      // Find the Lightning component container
+      const lightningContainer = element.querySelector('[id^="preview-lightning-"]');
+      if (!lightningContainer) {
+        console.warn('Lightning container not found, falling back to full preview');
+        await this.insertAsHtml(element);
+        return;
+      }
+
+      // Wait for Lightning component to fully render
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
       try {
-        // Wait a moment for any dynamic content to stabilize
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // First try to capture the preview as an image
-        const canvas = await html2canvas(element, {
+        // Capture just the Lightning component div
+        const canvas = await html2canvas(lightningContainer as HTMLElement, {
           logging: true,
           useCORS: true,
           allowTaint: true,
           background: '#ffffff'
         });
         
-        console.log('Preview captured as canvas');
+        console.log('Lightning component captured as canvas');
         
-        // Convert to data URL with high quality
+        // Convert to data URL
         const imageDataUrl = canvas.toDataURL('image/png', 1.0);
         console.log('Canvas converted to data URL');
 
         // Insert the image with some styling
         const htmlContent = `
           <div style="font-family: 'Segoe UI', sans-serif; margin: 10px 0;">
-            <p style="color: #666; font-size: 11px; margin: 0 0 8px 0;">Dashboard Preview:</p>
-            <div style="border: 1px solid #e1e1e1; border-radius: 6px; padding: 2px; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+            <div style="border: 1px solid #e1e1e1; border-radius: 6px; padding: 2px; background: white;">
               <img 
                 src="${imageDataUrl}" 
-                alt="Dashboard Preview" 
-                style="display: block; width: 100%; max-width: 600px; height: auto; border-radius: 4px; margin: 0 auto;"
+                alt="Dashboard" 
+                style="display: block; width: 100%; max-width: 800px; height: auto; margin: 0 auto;"
               />
             </div>
           </div>
         `;
 
         await this.insertHtml(htmlContent);
-        console.log('Preview image inserted successfully');
+        console.log('Lightning component image inserted successfully');
       } catch (captureError) {
-        console.warn('Failed to capture preview as image, falling back to HTML insertion:', captureError);
-        // Fallback to direct HTML insertion
+        console.warn('Failed to capture Lightning component, falling back to HTML:', captureError);
         await this.insertAsHtml(element);
       }
     } catch (error) {
