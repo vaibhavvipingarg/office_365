@@ -241,10 +241,30 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
       let mounted = true;
       const cleanupTimeout: NodeJS.Timeout | null = null;
       
-      // Only initialize Lightning component for dashboards
-      if (!item.hasOwnProperty('id') && item.DeveloperName) {
-        const accessToken = localStorage.getItem('sf_access_token');
-        if (accessToken) {
+      const accessToken = localStorage.getItem('sf_access_token');
+      if (accessToken) {
+        // Initialize Lightning component for both metrics and dashboards
+        if (item.hasOwnProperty('id')) {
+          // For metrics
+          OfficeService.initializeLightningComponent(
+            containerId, 
+            'analytics_embedding:dashboard3p', 
+            accessToken,
+            { isSubmetric: true }
+          )
+          .then(() => {
+            if (mounted) {
+              setIsLightningLoaded(true);
+            }
+          })
+          .catch(error => {
+            console.error('Error initializing Lightning component for metric:', error);
+            if (mounted) {
+              setIsLightningLoaded(false);
+            }
+          });
+        } else if (item.DeveloperName) {
+          // For dashboards
           OfficeService.initializeLightningComponent(containerId, item.DeveloperName, accessToken)
             .then(() => {
               if (mounted) {
@@ -274,7 +294,7 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
           console.warn('Error during Lightning component cleanup:', error);
         }
       };
-    }, [item.DeveloperName, containerId]);
+    }, [item.DeveloperName, item.id, containerId]);
     
     const formatDate = (dateString: string) => {
       if (!dateString) return 'Unknown';
@@ -316,30 +336,29 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
               </div>
             )}
 
-            {item.metadata?.downloadFile?.base64EncodedData && (
-              <div style={{ 
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                maxHeight: 200,
-                overflow: 'hidden',
-                backgroundColor: theme.palette.neutralLighterAlt,
-                borderRadius: 4,
-                border: `1px solid ${theme.palette.neutralLight}`
-              }}>
-                <img 
-                  src={`data:${item.metadata.downloadFile.fileType || 'image/png'};base64,${item.metadata.downloadFile.base64EncodedData}`}
-                  alt="Metric Preview"
-                  style={{
-                    maxWidth: 200,
-                    maxHeight: 200,
-                    width: 'auto',
-                    height: 'auto',
-                    objectFit: 'contain'
-                  }}
-                />
+            {/* Lightning Component Container for Metric */}
+            <div style={{ 
+              minHeight: 200,
+              maxHeight: 300,
+              border: `1px solid ${theme.palette.neutralLight}`,
+              borderRadius: 4,
+              padding: 8,
+              backgroundColor: theme.palette.white,
+              position: 'relative',
+              overflow: 'hidden'
+            }}>
+              <div id={containerId}>
+                {!isLightningLoaded && (
+                  <Stack 
+                    horizontalAlign="center" 
+                    verticalAlign="center" 
+                    styles={{ root: { height: 200 } }}
+                  >
+                    <Spinner size={SpinnerSize.large} label="Loading metric..." />
+                  </Stack>
+                )}
               </div>
-            )}
+            </div>
 
             <Stack tokens={{ childrenGap: 8 }}>
               {item.metadata?.asset?.metricFilterSummary && (

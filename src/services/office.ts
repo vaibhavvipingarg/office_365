@@ -1,4 +1,5 @@
 import html2canvas from 'html2canvas';
+import { SalesforceAuth } from './salesforce-real';
 
 // Add type declarations at the top of the file
 declare global {
@@ -168,90 +169,80 @@ export const OfficeService = {
     }
   },
 
-  initializeLightningComponent(containerId: string, dashboardId: string, accessToken: string): Promise<void> {
-    console.log('Initializing Lightning component...', { containerId, dashboardId });
-    
+  async loadScript(url: string): Promise<void> {
     return new Promise((resolve, reject) => {
-      try {
-        // Load Lightning Out script if not already loaded
-        if (!document.querySelector('script[src*="lightning.out.js"]')) {
-          const script = document.createElement('script');
-          // Add timestamp to prevent caching
-          script.src = `https://sdb42com6.test13.my.pc-rnd.salesforce.com/lightning/lightning.out.js?_=${Date.now()}`;
-          script.onload = () => {
-            this.createLightningComponent(containerId, dashboardId, accessToken, resolve, reject);
-          };
-          script.onerror = (error) => {
-            console.error('Failed to load Lightning Out script:', error);
-            reject(error);
-          };
-          document.head.appendChild(script);
-        } else {
-          this.createLightningComponent(containerId, dashboardId, accessToken, resolve, reject);
-        }
-      } catch (error) {
-        console.error('Error initializing Lightning Out:', error);
-        reject(error);
-      }
+      const script = document.createElement('script');
+      script.src = url;
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error(`Failed to load script: ${url}`));
+      document.head.appendChild(script);
     });
   },
 
-  // Helper method to create the Lightning component
-  createLightningComponent(
-    containerId: string, 
-    dashboardId: string, 
+  async initializeLightningComponent(
+    containerId: string,
+    componentName: string,
     accessToken: string,
-    resolve: () => void,
-    reject: (error: Error) => void
-  ): void {
-    if (typeof window.$Lightning !== 'undefined') {
-      const targetOrigin = 'https://vaibhavvipingarg.github.io';
-      console.log('Creating Lightning component with origin:', targetOrigin);
+    params?: Record<string, any>
+  ): Promise<void> {
+    try {
+      console.log(`Initializing Lightning component ${componentName} in container ${containerId}`);
+      
+      const instance = await SalesforceAuth.getInstance();
+      if (!instance) {
+        throw new Error('No Salesforce instance available');
+      }
 
-      window.$Lightning.use(
-        "tableau_einstein:tableauEinsteinApp",
+      // Get the base URL from local storage
+      const baseUrl = localStorage.getItem('sf_instance_url');
+      if (!baseUrl) {
+        throw new Error('No Salesforce instance URL available');
+      }
+      
+      // Create the Lightning Out URL
+      const lightningOutUrl = `${baseUrl}/lightning/lightning.out.js`;
+      
+      // Load the Lightning Out script if not already loaded
+      if (!document.querySelector(`script[src="${lightningOutUrl}"]`)) {
+        await this.loadScript(lightningOutUrl);
+      }
+
+      // Initialize $Lightning if not already done
+      if (!(window as any).$Lightning) {
+        console.error('Lightning Out script failed to load properly');
+        return;
+      }
+
+      // Create the component attributes
+      const componentAttributes = {
+        ...(params || {}),
+        accesstoken: accessToken,
+      };
+
+      // Initialize Lightning Out
+      await (window as any).$Lightning.use(
+        "lightning:tableauCRM",
         () => {
-          console.log('Lightning app initialized, creating component...');
-          window.$Lightning.createComponent(
-            "analytics_embedding:metric3p",
-            {
-              height: 300,
-              width: 200,
-              idOrApiName: "1HUUA0000001F6f4AE",
-              isSubmetric: true,
-              allowTransparency: true,
-              showHeader: false,
-              showSharing: false
-            },
+          // Create the component
+          (window as any).$Lightning.createComponent(
+            componentName,
+            componentAttributes,
             containerId,
             (cmp: any) => {
               if (cmp) {
-                console.log("Lightning component created successfully");
-                // Store the component reference and mark as ready
-                const container = document.getElementById(containerId);
-                if (container) {
-                  container.setAttribute('data-lightning-ready', 'true');
-                  // Store the container ID for later use
-                  container.setAttribute('data-container-id', containerId);
-                  resolve();
-                }
+                console.log(`Lightning component ${componentName} created successfully`);
               } else {
-                console.error("Failed to create Lightning component");
-                reject(new Error("Failed to create Lightning component"));
+                console.error(`Failed to create Lightning component ${componentName}`);
               }
             }
           );
         },
-        'https://sdb42com6.test13.lightning.pc-rnd.force.com',
-        accessToken,
-        {
-          allowedDomains: [targetOrigin],
-          useAppHost: true
-        }
+        baseUrl,
+        accessToken
       );
-    } else {
-      console.error('Lightning Out not available');
-      reject(new Error('Lightning Out not available'));
+    } catch (error) {
+      console.error('Error initializing Lightning component:', error);
+      throw error;
     }
   },
 
@@ -318,21 +309,6 @@ export const OfficeService = {
           <div style="margin-left: auto; font-size: 12px; color: #605e5c;">${content.AnalyticsWorkspace?.MasterLabel || 'Dashboard'}</div>
         </div>
         ${content.Description ? `<div style="margin-bottom: 12px;">${content.Description}</div>` : ''}
-        <div style="font-size: 13px; margin-bottom: 8px;">
-          <span style="color: #605e5c;">Creator:</span>
-          <span style="float: right;">${content.CreatedBy?.Name || 'Unknown'}</span>
-        </div>
-        <div style="font-size: 13px; margin-bottom: 8px;">
-          <span style="color: #605e5c;">Created:</span>
-          <span style="float: right;">${this.formatDate(content.CreatedDate)}</span>
-        </div>
-        <div style="font-size: 13px; margin-bottom: 8px;">
-          <span style="color: #605e5c;">Workspace:</span>
-          <span style="float: right;">${content.AnalyticsWorkspace?.MasterLabel || 'Default'}</span>
-        </div>
-        <div style="font-size: 11px; color: #a19f9d;">
-          Dashboard ID: ${content.Id || 'Unknown'}
-        </div>
       </div>
     `;
   },
@@ -355,21 +331,6 @@ export const OfficeService = {
   async insertAsHtml(element: HTMLElement): Promise<void> {
     console.log('Falling back to HTML insertion');
     const htmlContent = element.outerHTML;
-    
-    return new Promise((resolve, reject) => {
-      Office.context.document.setSelectedDataAsync(
-        htmlContent,
-        { coercionType: Office.CoercionType.Html },
-        (result) => {
-          if (result.status === Office.AsyncResultStatus.Succeeded) {
-            console.log('HTML content inserted successfully');
-            resolve();
-          } else {
-            console.error('Failed to insert HTML content:', result.error);
-            reject(new Error('Failed to insert content'));
-          }
-        }
-      );
-    });
+    return this.insertHtml(htmlContent);
   }
-}; 
+};
