@@ -143,49 +143,83 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
         throw new Error('Preview element not found');
       }
 
-      // For dashboards, wait for the viz container to be present
+      // Handle differently based on type
       if (!selectedItem.hasOwnProperty('id')) {
         // This is a dashboard
+        console.log('Preparing to capture dashboard visualization...');
+        
         let attempts = 0;
         const maxAttempts = 30; // 30 seconds max wait time
+        let vizContainer = null;
         
+        // Wait for viz container
         while (attempts < maxAttempts) {
-          const vizContainer = document.querySelector('.viz-container');
+          vizContainer = document.querySelector('.viz-container');
           if (vizContainer) {
+            console.log('Visualization container found, preparing to capture...');
             break;
           }
-          await new Promise(resolve => setTimeout(resolve, 1000)); // Check every second
+          console.log(`Waiting for visualization to load (attempt ${attempts + 1}/${maxAttempts})...`);
+          await new Promise(resolve => setTimeout(resolve, 1000));
           attempts++;
         }
-        
-        if (attempts === maxAttempts) {
-          console.warn('Timed out waiting for dashboard visualization to load');
-        } else {
-          // Give a small additional delay for final render
-          await new Promise(resolve => setTimeout(resolve, 500));
+
+        if (!vizContainer) {
+          console.error('Timed out waiting for dashboard visualization to load');
+          throw new Error('Dashboard visualization failed to load');
         }
+
+        // Give a small delay for final render
+        await new Promise(resolve => setTimeout(resolve, 500));
+        console.log('Capturing dashboard visualization...');
+
+        // Capture just the visualization container
+        const canvas = await html2canvas(vizContainer as HTMLElement, {
+          background: 'white',
+          logging: false,
+          useCORS: true,
+          allowTaint: true
+        });
+
+        console.log('Dashboard visualization captured successfully');
+
+        const imageData = {
+          ...selectedItem,
+          capturedImage: canvas.toDataURL('image/png')
+        };
+
+        await OfficeService.insertContent(imageData);
+        console.log('Dashboard visualization inserted into document');
+      } else {
+        // This is a metric - keep existing behavior
+        const canvas = await html2canvas(previewElement, {
+          background: 'white',
+          width: previewElement.offsetWidth,
+          height: previewElement.offsetHeight,
+          logging: false,
+          useCORS: true,
+          allowTaint: true
+        });
+
+        const imageData = {
+          ...selectedItem,
+          capturedImage: canvas.toDataURL('image/png')
+        };
+
+        await OfficeService.insertContent(imageData);
       }
 
-      const canvas = await html2canvas(previewElement, {
-        background: 'white',
-        width: previewElement.offsetWidth,
-        height: previewElement.offsetHeight,
-        logging: false,
-        useCORS: true,
-        allowTaint: true
-      });
-
-      const imageData = {
-        ...selectedItem,
-        capturedImage: canvas.toDataURL('image/png')
-      };
-
-      await OfficeService.insertContent(imageData);
       setShowPreview(false);
     } catch (error) {
-      console.error('Failed to capture preview:', error);
-      // Fall back to regular content insertion
-      await OfficeService.insertContent(selectedItem);
+      console.error('Failed to capture and insert content:', error);
+      // Only fall back to regular content insertion for metrics
+      if (selectedItem.hasOwnProperty('id')) {
+        console.log('Falling back to regular metric content insertion');
+        await OfficeService.insertContent(selectedItem);
+      } else {
+        // For dashboards, show error if capture fails
+        console.error('Failed to capture dashboard visualization');
+      }
       setShowPreview(false);
     }
   };
