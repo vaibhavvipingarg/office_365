@@ -247,19 +247,35 @@ export const OfficeService = {
   },
 
   formatContentAsHtml(content: any): string {
+    // If we have a captured image, use that regardless of content type
+    if (content.capturedImage) {
+      const title = content.hasOwnProperty('id') 
+        ? (content.label || 'Metric Card')
+        : (content.MasterLabel || content.Name || 'Dashboard');
+
+      return `
+        <div style="font-family: 'Segoe UI', sans-serif; margin: 10px 0;">
+          <div style="border: 1px solid #e1e1e1; border-radius: 6px; padding: 15px; background: white;">
+            <div style="font-size: 18px; font-weight: 600; color: #0078d4; margin-bottom: 10px;">
+              ${title}
+            </div>
+            <img 
+              src="${content.capturedImage}" 
+              alt="${title}" 
+              style="display: block; width: 100%; max-width: 800px; height: auto; margin: 0 auto;"
+            />
+            <div style="font-size: 11px; color: #a19f9d; border-top: 1px solid #e1e1e1; margin-top: 10px; padding-top: 8px;">
+              ${content.hasOwnProperty('id') ? `Metric ID: ${content.id}` : `Dashboard ID: ${content.Id || 'Unknown'}`}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // Fallback to the old HTML format if no captured image
     const isMetric = content && content.hasOwnProperty('id') && content.hasOwnProperty('label');
     
     if (isMetric) {
-      // If we have a captured image of the card, use that
-      if (content.capturedImage) {
-        return `
-          <div style="font-family: 'Segoe UI', sans-serif; max-width: 400px;">
-            <img src="${content.capturedImage}" alt="${content.label || 'Metric Card'}" style="width: 100%; height: auto;" />
-          </div>
-        `;
-      }
-
-      // Fallback to the old HTML format if no captured image
       return `
         <div style="font-family: 'Segoe UI', sans-serif; padding: 15px; border: 1px solid #e1e1e1; border-radius: 6px; max-width: 600px;">
           <div style="display: flex; align-items: center; margin-bottom: 12px;">
@@ -284,32 +300,32 @@ export const OfficeService = {
           </div>
         </div>
       `;
-    } else {
-      return `
-        <div style="font-family: 'Segoe UI', sans-serif; padding: 15px; border: 1px solid #e1e1e1; border-radius: 6px; max-width: 600px;">
-          <div style="display: flex; align-items: center; margin-bottom: 12px;">
-            <div style="font-size: 18px; font-weight: 600; color: #0078d4;">${content.MasterLabel || content.Name || 'Unknown Dashboard'}</div>
-            <div style="margin-left: auto; font-size: 12px; color: #605e5c;">${content.AnalyticsWorkspace?.MasterLabel || 'Dashboard'}</div>
-          </div>
-          ${content.Description ? `<div style="margin-bottom: 12px;">${content.Description}</div>` : ''}
-          <div style="font-size: 13px; margin-bottom: 8px;">
-            <span style="color: #605e5c;">Creator:</span>
-            <span style="float: right;">${content.CreatedBy?.Name || 'Unknown'}</span>
-          </div>
-          <div style="font-size: 13px; margin-bottom: 8px;">
-            <span style="color: #605e5c;">Created:</span>
-            <span style="float: right;">${this.formatDate(content.CreatedDate)}</span>
-          </div>
-          <div style="font-size: 13px; margin-bottom: 8px;">
-            <span style="color: #605e5c;">Workspace:</span>
-            <span style="float: right;">${content.AnalyticsWorkspace?.MasterLabel || 'Default'}</span>
-          </div>
-          <div style="font-size: 11px; color: #a19f9d; border-top: 1px solid #e1e1e1; padding-top: 8px;">
-            Dashboard ID: ${content.Id || 'Unknown'}
-          </div>
-        </div>
-      `;
     }
+
+    return `
+      <div style="font-family: 'Segoe UI', sans-serif; padding: 15px; border: 1px solid #e1e1e1; border-radius: 6px; max-width: 600px;">
+        <div style="display: flex; align-items: center; margin-bottom: 12px;">
+          <div style="font-size: 18px; font-weight: 600; color: #0078d4;">${content.MasterLabel || content.Name || 'Unknown Dashboard'}</div>
+          <div style="margin-left: auto; font-size: 12px; color: #605e5c;">${content.AnalyticsWorkspace?.MasterLabel || 'Dashboard'}</div>
+        </div>
+        ${content.Description ? `<div style="margin-bottom: 12px;">${content.Description}</div>` : ''}
+        <div style="font-size: 13px; margin-bottom: 8px;">
+          <span style="color: #605e5c;">Creator:</span>
+          <span style="float: right;">${content.CreatedBy?.Name || 'Unknown'}</span>
+        </div>
+        <div style="font-size: 13px; margin-bottom: 8px;">
+          <span style="color: #605e5c;">Created:</span>
+          <span style="float: right;">${this.formatDate(content.CreatedDate)}</span>
+        </div>
+        <div style="font-size: 13px; margin-bottom: 8px;">
+          <span style="color: #605e5c;">Workspace:</span>
+          <span style="float: right;">${content.AnalyticsWorkspace?.MasterLabel || 'Default'}</span>
+        </div>
+        <div style="font-size: 11px; color: #a19f9d; border-top: 1px solid #e1e1e1; padding-top: 8px;">
+          Dashboard ID: ${content.Id || 'Unknown'}
+        </div>
+      </div>
+    `;
   },
 
   formatDate(dateString: string): string {
