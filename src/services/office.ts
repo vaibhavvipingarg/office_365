@@ -218,6 +218,7 @@ export const OfficeService = {
               height: 300,
               width: 200,
               idOrApiName: "1HUUA0000001F6f4AE",
+              isSubmetric: true,
               allowTransparency: true,
               showHeader: false,
               showSharing: false
