@@ -126,62 +126,95 @@ export const OfficeService = {
       const imageDataUrl = canvas.toDataURL('image/png', 1.0);
       console.log('Canvas converted to data URL');
 
-      // Create HTML with embedded image and styling
+      // Create a container for the Lightning Out app with unique ID
+      const containerId = `lightning-container-${Date.now()}`;
+
+      // Create HTML with both preview and Lightning container
       const htmlContent = `
-        <div style="
-          font-family: 'Segoe UI', sans-serif;
-          margin: 10px 0;
-          max-width: 100%;
-          display: block;
-        ">
-          <p style="
-            color: #666;
-            font-size: 11px;
-            margin: 0 0 8px 0;
-            display: block;
-          ">Dashboard Preview:</p>
-          <div style="
-            border: 1px solid #e1e1e1;
-            border-radius: 6px;
-            padding: 2px;
-            background: white;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-            display: block;
-          ">
-            <img 
-              src="${imageDataUrl}" 
-              alt="Dashboard Preview" 
-              style="
-                display: block;
-                width: 100%;
-                max-width: 600px;
-                height: auto;
-                border-radius: 4px;
-                margin: 0 auto;
-              "
-            />
+        <div style="font-family: 'Segoe UI', sans-serif; margin: 10px 0;">
+          <!-- Preview Image Section -->
+          <div style="margin-bottom: 20px;">
+            <p style="color: #666; font-size: 11px; margin: 0 0 8px 0;">Dashboard Preview:</p>
+            <div style="border: 1px solid #e1e1e1; border-radius: 6px; padding: 2px; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+              <img 
+                src="${imageDataUrl}" 
+                alt="Dashboard Preview" 
+                style="display: block; width: 100%; max-width: 600px; height: auto; border-radius: 4px; margin: 0 auto;"
+              />
+            </div>
+          </div>
+
+          <!-- Lightning Component Section -->
+          <div style="margin-top: 20px;">
+            <p style="color: #666; font-size: 11px; margin: 0 0 8px 0;">Live Dashboard:</p>
+            <div style="border: 1px solid #e1e1e1; border-radius: 6px; padding: 15px; background: white; min-height: 300px;">
+              <div id="${containerId}">Loading live dashboard...</div>
+            </div>
           </div>
         </div>
+
+        <!-- Lightning Out Script -->
+        <script src="https://sdb42com6.test13.my.pc-rnd.salesforce.com/lightning/lightning.out.js"></script>
+        <script>
+          (function() {
+            var checkLightning = setInterval(function() {
+              if (typeof window.$Lightning !== 'undefined') {
+                clearInterval(checkLightning);
+                window.$Lightning.use(
+                  "unifiedAnalytics:unifiedAnalyticsApp",
+                  function() {
+                    window.$Lightning.createComponent(
+                      "analytics_embedding:dashboard3p",
+                      {
+                        height: 300,
+                        idOrApiName: '0TrUA00000006yH0AQ'
+                      },
+                      "${containerId}",
+                      function(cmp) {
+                        if (cmp) {
+                          console.log("Lightning component created successfully");
+                        } else {
+                          console.error("Failed to create Lightning component");
+                          document.getElementById("${containerId}").innerHTML = 'Error loading live dashboard. Please refresh and try again.';
+                        }
+                      }
+                    );
+                  },
+                  'https://sdb42com6.test13.my.pc-rnd.salesforce.com',
+                  "${window.localStorage.getItem('sf_access_token') || ''}"
+                );
+              }
+            }, 500);
+
+            // Clear interval after 30 seconds to prevent infinite checking
+            setTimeout(function() {
+              clearInterval(checkLightning);
+              if (typeof window.$Lightning === 'undefined') {
+                console.error('Lightning Out failed to load after 30 seconds');
+                document.getElementById("${containerId}").innerHTML = 'Error: Lightning Out failed to load. Please refresh and try again.';
+              }
+            }, 30000);
+          })();
+        </script>
       `;
 
       return new Promise((resolve, reject) => {
         try {
-          // Insert the HTML with embedded image
           Office.context.document.setSelectedDataAsync(
             htmlContent,
             { coercionType: Office.CoercionType.Html },
             (result) => {
               if (result.status === Office.AsyncResultStatus.Succeeded) {
-                console.log('Preview inserted successfully');
+                console.log('Content inserted successfully');
                 resolve();
               } else {
-                console.error('Failed to insert preview:', result.error);
-                reject(new Error('Failed to insert preview'));
+                console.error('Failed to insert content:', result.error);
+                reject(new Error('Failed to insert content'));
               }
             }
           );
         } catch (error) {
-          console.error('Error in preview insertion:', error);
+          console.error('Error in content insertion:', error);
           reject(error);
         }
       });
