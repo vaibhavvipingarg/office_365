@@ -496,4 +496,81 @@ export class SalesforceAuth {
       throw error;
     }
   }
+
+  async getMetricMetadata(metricId: string): Promise<any> {
+    try {
+      const accessToken = localStorage.getItem('sf_access_token');
+      if (!accessToken) {
+        throw new Error('No access token found');
+      }
+
+      const response = await fetch('https://sdb42com6.test13.lightning.pc-rnd.force.com/tableau/download?metadataOnly=true', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          asset: {
+            type: "Submetric",
+            assetId: metricId,
+            timeRange: "eyJmaWVsZE5hbWUiOiIiLCJvcGVyYXRvciI6Ikxhc3RORGF5cyIsInZhbHVlcyI6WzMwXX0"
+          }
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch metric metadata: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error fetching metric metadata:', error);
+      throw error;
+    }
+  }
+
+  async getMetricsData(): Promise<any[]> {
+    try {
+      const accessToken = localStorage.getItem('sf_access_token');
+      if (!accessToken) {
+        throw new Error('No access token found');
+      }
+
+      const response = await fetch('https://sdb42com6.test13.lightning.pc-rnd.force.com/services/data/v59.0/wave/metrics', {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch metrics data');
+      }
+
+      const data = await response.json();
+      const metrics = data.metrics || [];
+
+      // Fetch metadata for each metric
+      const metricsWithMetadata = await Promise.all(
+        metrics.map(async (metric: any) => {
+          try {
+            const metadata = await this.getMetricMetadata(metric.id);
+            return {
+              ...metric,
+              metadata
+            };
+          } catch (error) {
+            console.warn(`Failed to fetch metadata for metric ${metric.id}:`, error);
+            return metric;
+          }
+        })
+      );
+
+      return metricsWithMetadata;
+    } catch (error) {
+      console.error('Error fetching metrics data:', error);
+      throw error;
+    }
+  }
 } 

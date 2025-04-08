@@ -177,6 +177,16 @@ export const MetricCard: React.FC<MetricCardProps> = ({
         </div>
       )}
 
+      {item.metadata?.root?.asset?.metricFilterSummary && (
+        <div className={styles.detailsRow}>
+          <span className={styles.label}>Time Range:</span>
+          <span className={styles.value}>
+            <Icon iconName="Calendar" style={{ fontSize: 10, marginRight: 4 }} />
+            {item.metadata.root.asset.metricFilterSummary}
+          </span>
+        </div>
+      )}
+
       <div className={styles.detailsRow}>
         <span className={styles.label}>Created:</span>
         <span className={styles.value}>
@@ -193,6 +203,12 @@ export const MetricCard: React.FC<MetricCardProps> = ({
           <Icon iconName="ChartSeries" style={{ fontSize: 10, marginRight: 4 }} />
           ID: {item.id?.substring(0, 10)}...
         </span>
+        {item.metadata?.root?.asset?.name && (
+          <span style={{ fontSize: 10 }}>
+            <Icon iconName="Tag" style={{ fontSize: 10, marginRight: 4 }} />
+            {item.metadata.root.asset.name.split('_')[0]}
+          </span>
+        )}
       </div>
     </div>
   );
