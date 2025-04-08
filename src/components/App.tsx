@@ -146,29 +146,13 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
         throw new Error('Preview element not found');
       }
 
-      // First insert the preview as an image
-      await OfficeService.insertImageFromElement(previewElement);
-
-      // Then insert the Lightning component
-      if (selectedItem.Id) { // Check if it's a dashboard
-        const accessToken = localStorage.getItem('sf_access_token');
-        if (!accessToken) {
-          throw new Error('Salesforce access token not found');
-        }
-
-        // Add some spacing between preview and component
-        await OfficeService.insertHtml('<p style="margin: 20px 0;"></p>');
-
-        // Insert the Lightning component
-        await OfficeService.insertLightningComponent(
-          'analytics_embedding:dashboard3p',
-          {
-            height: 300,
-            idOrApiName: selectedItem.Id
-          },
-          accessToken
-        );
+      // For dashboards, wait a moment to ensure the Lightning component is fully rendered
+      if (!selectedItem.hasOwnProperty('id') && selectedItem.Id) {
+        await new Promise(resolve => setTimeout(resolve, 2000));
       }
+
+      // Capture and insert the preview (which now includes the Lightning component if it's a dashboard)
+      await OfficeService.insertImageFromElement(previewElement);
 
       setShowPreview(false);
       setError(null);
@@ -183,6 +167,23 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
   // This component renders a visual card for the selected item
   const PreviewCard = ({ item }: { item: any }) => {
     const theme = getTheme();
+    const [isLightningLoaded, setIsLightningLoaded] = useState(false);
+    const containerId = `preview-lightning-${Date.now()}`;
+    
+    useEffect(() => {
+      // Only initialize Lightning component for dashboards
+      if (!item.hasOwnProperty('id') && item.Id) {
+        const accessToken = localStorage.getItem('sf_access_token');
+        if (accessToken) {
+          OfficeService.initializeLightningComponent(containerId, item.Id, accessToken)
+            .then(() => setIsLightningLoaded(true))
+            .catch(error => {
+              console.error('Error initializing Lightning component:', error);
+              setIsLightningLoaded(false);
+            });
+        }
+      }
+    }, [item, containerId]);
     
     const getDashboardIcon = () => {
       return 'ViewDashboard';
@@ -270,7 +271,7 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
             </Stack>
           </>
         ) : (
-          // Dashboard Preview
+          // Dashboard Preview - Show Lightning Component
           <>
             <Stack horizontal horizontalAlign="space-between" verticalAlign="center">
               <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 8 }}>
@@ -284,34 +285,34 @@ export const App: React.FC<AppProps> = ({ isLocalMode = false }) => {
               </Text>
             </Stack>
             
-            {item.Description && (
-              <Text variant="medium">
-                {item.Description}
-              </Text>
-            )}
-            
-            <Stack tokens={{ childrenGap: 8 }}>
-              <Stack horizontal horizontalAlign="space-between">
-                <Text variant="small">Creator:</Text>
-                <Text variant="small">{item.CreatedBy ? item.CreatedBy.Name : 'Unknown'}</Text>
-              </Stack>
-              
-              <Stack horizontal horizontalAlign="space-between">
-                <Text variant="small">Created:</Text>
-                <Text variant="small">{formatDate(item.CreatedDate)}</Text>
-              </Stack>
-              
-              <Stack horizontal horizontalAlign="space-between">
-                <Text variant="small">Workspace:</Text>
-                <Text variant="small">{item.AnalyticsWorkspace ? item.AnalyticsWorkspace.MasterLabel : 'Default'}</Text>
-              </Stack>
-            </Stack>
+            {/* Lightning Component Container */}
+            <div style={{ 
+              minHeight: 300, 
+              border: `1px solid ${theme.palette.neutralLight}`,
+              borderRadius: 4,
+              padding: 8,
+              backgroundColor: theme.palette.white,
+              position: 'relative'
+            }}>
+              <div id={containerId}>
+                {!isLightningLoaded && (
+                  <Stack 
+                    horizontalAlign="center" 
+                    verticalAlign="center" 
+                    styles={{ root: { height: 300 } }}
+                  >
+                    <Spinner size={SpinnerSize.large} label="Loading dashboard..." />
+                  </Stack>
+                )}
+              </div>
+            </div>
             
             <Stack 
               styles={{
                 root: {
                   borderTop: `1px solid ${theme.palette.neutralLight}`,
-                  paddingTop: 12
+                  paddingTop: 12,
+                  marginTop: 12
                 }
               }}
             >

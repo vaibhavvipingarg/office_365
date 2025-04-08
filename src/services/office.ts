@@ -126,8 +126,8 @@ export const OfficeService = {
       const imageDataUrl = canvas.toDataURL('image/png', 1.0);
       console.log('Canvas converted to data URL');
 
-      // First insert the preview image
-      const previewHtml = `
+      // Insert the image with some styling
+      const htmlContent = `
         <div style="font-family: 'Segoe UI', sans-serif; margin: 10px 0;">
           <p style="color: #666; font-size: 11px; margin: 0 0 8px 0;">Dashboard Preview:</p>
           <div style="border: 1px solid #e1e1e1; border-radius: 6px; padding: 2px; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
@@ -140,100 +140,80 @@ export const OfficeService = {
         </div>
       `;
 
-      // Insert preview
-      await this.insertHtml(previewHtml);
-      console.log('Preview image inserted');
+      await this.insertHtml(htmlContent);
+      console.log('Preview image inserted successfully');
+    } catch (error) {
+      console.error('Error capturing and inserting preview:', error);
+      throw error;
+    }
+  },
 
-      // Add some spacing
-      await this.insertHtml('<p style="margin: 20px 0;"></p>');
-
-      // Now insert the Lightning component container
-      const containerId = `lightning-container-${Date.now()}`;
-      const componentHtml = `
-        <div style="font-family: 'Segoe UI', sans-serif; margin: 10px 0;">
-          <p style="color: #666; font-size: 11px; margin: 0 0 8px 0;">Live Dashboard:</p>
-          <div style="border: 1px solid #e1e1e1; border-radius: 6px; padding: 15px; background: white; min-height: 300px;">
-            <div id="${containerId}">Loading live dashboard...</div>
-          </div>
-        </div>
-      `;
-
-      // Insert Lightning container
-      await this.insertHtml(componentHtml);
-      console.log('Lightning container inserted');
-
-      // Now initialize Lightning Out
+  initializeLightningComponent(containerId: string, dashboardId: string, accessToken: string): Promise<void> {
+    console.log('Initializing Lightning component...', { containerId, dashboardId });
+    
+    return new Promise((resolve, reject) => {
       try {
         // Load Lightning Out script if not already loaded
         if (!document.querySelector('script[src*="lightning.out.js"]')) {
           const script = document.createElement('script');
           script.src = 'https://sdb42com6.test13.my.pc-rnd.salesforce.com/lightning/lightning.out.js';
           script.onload = () => {
-            console.log('Lightning Out script loaded');
-            this.initializeLightningComponent(
-              "analytics_embedding:dashboard3p",
-              {
-                height: 300,
-                idOrApiName: '0TrUA00000006yH0AQ'
-              },
-              containerId,
-              window.localStorage.getItem('sf_access_token') || ''
-            );
+            this.createLightningComponent(containerId, dashboardId, accessToken, resolve, reject);
           };
           script.onerror = (error) => {
             console.error('Failed to load Lightning Out script:', error);
-            // Update error message in the container
-            const containerElement = document.getElementById(containerId);
-            if (containerElement) {
-              containerElement.innerHTML = 'Error loading dashboard. Please refresh and try again.';
-            }
+            reject(error);
           };
           document.head.appendChild(script);
         } else {
-          // If script is already loaded, initialize directly
-          this.initializeLightningComponent(
-            "analytics_embedding:dashboard3p",
-            {
-              height: 300,
-              idOrApiName: '0TrUA00000006yH0AQ'
-            },
-            containerId,
-            window.localStorage.getItem('sf_access_token') || ''
-          );
+          this.createLightningComponent(containerId, dashboardId, accessToken, resolve, reject);
         }
       } catch (error) {
         console.error('Error initializing Lightning Out:', error);
-        // Update error message in the container
-        const containerElement = document.getElementById(containerId);
-        if (containerElement) {
-          containerElement.innerHTML = 'Error loading dashboard. Please refresh and try again.';
-        }
+        reject(error);
       }
-    } catch (error) {
-      console.error('Error in preview and Lightning component insertion:', error);
-      throw error;
-    }
+    });
   },
 
-  async insertAsHtml(element: HTMLElement): Promise<void> {
-    console.log('Falling back to HTML insertion');
-    const htmlContent = element.outerHTML;
-    
-    return new Promise((resolve, reject) => {
-      Office.context.document.setSelectedDataAsync(
-        htmlContent,
-        { coercionType: Office.CoercionType.Html },
-        (result) => {
-          if (result.status === Office.AsyncResultStatus.Succeeded) {
-            console.log('HTML content inserted successfully');
-            resolve();
-          } else {
-            console.error('Failed to insert HTML content:', result.error);
-            reject(new Error('Failed to insert content'));
-          }
-        }
+  // Helper method to create the Lightning component
+  createLightningComponent(
+    containerId: string, 
+    dashboardId: string, 
+    accessToken: string,
+    resolve: () => void,
+    reject: (error: Error) => void
+  ): void {
+    if (typeof window.$Lightning !== 'undefined') {
+      window.$Lightning.use(
+        "unifiedAnalytics:unifiedAnalyticsApp",
+        () => {
+          console.log('Lightning app initialized, creating component...');
+          window.$Lightning.createComponent(
+            "analytics_embedding:dashboard3p",
+            {
+              height: 300,
+              idOrApiName: dashboardId
+            },
+            containerId,
+            (cmp: any) => {
+              if (cmp) {
+                console.log("Lightning component created successfully");
+                // Give the component a moment to render before resolving
+                setTimeout(resolve, 1000);
+              } else {
+                console.error("Failed to create Lightning component");
+                reject(new Error("Failed to create Lightning component"));
+              }
+            }
+          );
+        },
+        'https://sdb42com6.test13.my.pc-rnd.salesforce.com',
+        accessToken
       );
-    });
+    } else {
+      console.error('Lightning Out not available');
+      reject(new Error('Lightning Out not available'));
+    }
   },
 
   formatContentAsHtml(content: any): string {
@@ -307,105 +287,24 @@ export const OfficeService = {
     }
   },
 
-  async insertLightningComponent(componentName: string, componentAttributes: any, accessToken: string): Promise<void> {
-    try {
-      console.log('Starting Lightning component insertion...');
-      
-      // Create a container for the Lightning Out app with unique ID
-      const containerId = `lightning-container-${Date.now()}`;
-      
-      // Create a simpler HTML structure first
-      const htmlContent = `
-        <div style="
-          font-family: 'Segoe UI', sans-serif;
-          margin: 20px 0;
-          padding: 15px;
-          border: 1px solid #e1e1e1;
-          border-radius: 6px;
-          background: white;
-          min-height: 300px;
-        ">
-          <div id="${containerId}">Loading dashboard...</div>
-        </div>
-      `;
-
-      // First insert the container
-      await new Promise((resolve, reject) => {
-        Office.context.document.setSelectedDataAsync(
-          htmlContent,
-          { coercionType: Office.CoercionType.Html },
-          (result) => {
-            if (result.status === Office.AsyncResultStatus.Succeeded) {
-              console.log('Lightning container inserted successfully');
-              resolve(true);
-            } else {
-              console.error('Failed to insert Lightning container:', result.error);
-              reject(new Error('Failed to insert Lightning container'));
-            }
-          }
-        );
-      });
-
-      // Now try to initialize Lightning Out
-      try {
-        // Load Lightning Out script if not already loaded
-        if (!document.querySelector('script[src*="lightning.out.js"]')) {
-          const script = document.createElement('script');
-          script.src = 'https://sdb42com6.test13.my.pc-rnd.salesforce.com/lightning/lightning.out.js';
-          script.onload = () => {
-            console.log('Lightning Out script loaded');
-            this.initializeLightningComponent(componentName, componentAttributes, containerId, accessToken);
-          };
-          script.onerror = (error) => {
-            console.error('Failed to load Lightning Out script:', error);
-          };
-          document.head.appendChild(script);
-        } else {
-          // If script is already loaded, initialize directly
-          this.initializeLightningComponent(componentName, componentAttributes, containerId, accessToken);
-        }
-      } catch (error) {
-        console.error('Error initializing Lightning Out:', error);
-        // Update the container with error message
-        const errorContent = `
-          <div style="color: #a4262c; padding: 10px;">
-            Failed to load dashboard. Please refresh and try again.
-          </div>
-        `;
-        await this.insertHtml(errorContent);
-      }
-    } catch (error) {
-      console.error('Error in Lightning component insertion:', error);
-      throw error;
-    }
-  },
-
-  initializeLightningComponent(componentName: string, componentAttributes: any, containerId: string, accessToken: string) {
-    console.log('Initializing Lightning component...', { componentName, containerId });
+  async insertAsHtml(element: HTMLElement): Promise<void> {
+    console.log('Falling back to HTML insertion');
+    const htmlContent = element.outerHTML;
     
-    if (typeof window.$Lightning !== 'undefined') {
-      window.$Lightning.use(
-        "unifiedAnalytics:unifiedAnalyticsApp",
-        function() {
-          console.log('Lightning app initialized, creating component...');
-          window.$Lightning.createComponent(
-            componentName,
-            componentAttributes,
-            containerId,
-            function(cmp: any) {
-              if (cmp) {
-                console.log("Lightning component created successfully");
-              } else {
-                console.error("Failed to create Lightning component");
-              }
-            }
-          );
-        },
-        'https://sdb42com6.test13.my.pc-rnd.salesforce.com',
-        accessToken
+    return new Promise((resolve, reject) => {
+      Office.context.document.setSelectedDataAsync(
+        htmlContent,
+        { coercionType: Office.CoercionType.Html },
+        (result) => {
+          if (result.status === Office.AsyncResultStatus.Succeeded) {
+            console.log('HTML content inserted successfully');
+            resolve();
+          } else {
+            console.error('Failed to insert HTML content:', result.error);
+            reject(new Error('Failed to insert content'));
+          }
+        }
       );
-    } else {
-      console.error('Lightning Out not available');
-    }
+    });
   }
 }; 
