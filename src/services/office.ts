@@ -262,7 +262,7 @@ export const OfficeService = {
 
       return `
         <div style="font-family: 'Segoe UI', sans-serif; margin: 10px 0;">
-          <div style="border: 1px solid #e1e1e1; border-radius: 6px; padding: 15px; background: white;">
+          <div style="padding: 15px;">
             <div style="font-size: 18px; font-weight: 600; color: #0078d4; margin-bottom: 10px;">
               ${title}
             </div>
@@ -271,7 +271,7 @@ export const OfficeService = {
               alt="${title}" 
               style="display: block; width: 100%; max-width: 800px; height: auto; margin: 0 auto;"
             />
-            <div style="font-size: 11px; color: #a19f9d; border-top: 1px solid #e1e1e1; margin-top: 10px; padding-top: 8px;">
+            <div style="font-size: 11px; color: #a19f9d; margin-top: 10px;">
               ${content.hasOwnProperty('id') ? `Metric ID: ${content.id}` : `Dashboard ID: ${content.Id || 'Unknown'}`}
             </div>
           </div>
@@ -284,7 +284,7 @@ export const OfficeService = {
     
     if (isMetric) {
       return `
-        <div style="font-family: 'Segoe UI', sans-serif; padding: 15px; border: 1px solid #e1e1e1; border-radius: 6px; max-width: 600px;">
+        <div style="font-family: 'Segoe UI', sans-serif; padding: 15px; max-width: 600px;">
           <div style="display: flex; align-items: center; margin-bottom: 12px;">
             <div style="font-size: 18px; font-weight: 600; color: #0078d4;">${content.label || 'Unknown Metric'}</div>
             <div style="margin-left: auto; font-size: 12px; color: #605e5c;">${content.type || 'Metric'}</div>
@@ -302,7 +302,7 @@ export const OfficeService = {
             <span style="color: #605e5c;">Workspace:</span>
             <span style="float: right;">${content.namespace || 'Default'}</span>
           </div>
-          <div style="font-size: 11px; color: #a19f9d; border-top: 1px solid #e1e1e1; padding-top: 8px;">
+          <div style="font-size: 11px; color: #a19f9d;">
             Metric ID: ${content.id || 'Unknown'}
           </div>
         </div>
@@ -310,7 +310,7 @@ export const OfficeService = {
     }
 
     return `
-      <div style="font-family: 'Segoe UI', sans-serif; padding: 15px; border: 1px solid #e1e1e1; border-radius: 6px; max-width: 600px;">
+      <div style="font-family: 'Segoe UI', sans-serif; padding: 15px; max-width: 600px;">
         <div style="display: flex; align-items: center; margin-bottom: 12px;">
           <div style="font-size: 18px; font-weight: 600; color: #0078d4;">${content.MasterLabel || content.Name || 'Unknown Dashboard'}</div>
           <div style="margin-left: auto; font-size: 12px; color: #605e5c;">${content.AnalyticsWorkspace?.MasterLabel || 'Dashboard'}</div>
@@ -328,7 +328,7 @@ export const OfficeService = {
           <span style="color: #605e5c;">Workspace:</span>
           <span style="float: right;">${content.AnalyticsWorkspace?.MasterLabel || 'Default'}</span>
         </div>
-        <div style="font-size: 11px; color: #a19f9d; border-top: 1px solid #e1e1e1; padding-top: 8px;">
+        <div style="font-size: 11px; color: #a19f9d;">
           Dashboard ID: ${content.Id || 'Unknown'}
         </div>
       </div>
